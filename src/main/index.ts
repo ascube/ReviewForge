@@ -493,6 +493,7 @@ app
         return { value };
       } catch (e) {
         return {
+          language: prefs.language,
           error:
             e instanceof ForgeError
               ? { en: e.en, zh: e.zh }

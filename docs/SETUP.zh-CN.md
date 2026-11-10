@@ -26,6 +26,8 @@
 
 直接在 **GitHub token** 输入凭据，点击 **Check GitHub／检查 GitHub**。应用会先保存再检查，确认返回的是预期账号。此凭据用于仓库和 API 操作，不会自动变成 Copilot 授权。只做本地审查可跳过这一步。
 
+PR 请求使用已保存的 **GitHub token**，不会回退到 GitHub CLI 或 Copilot 登录。**检查 GitHub** 显示 **GitHub 账号 · 用户名**；这仅验证 token 身份，并不保证可访问每个私有仓库。导入时的 404 可能表示链接不正确或访问权限不足，请检查 token 的仓库权限及组织 SSO 要求。
+
 ## 4. 配置 Copilot
 
 需要有 Copilot 使用权限的账号及组织要求的授权。二选一：
@@ -41,6 +43,8 @@
   在浏览器中用有 Copilot 权限的账号完成登录。ReviewForge 的 **Copilot token** 留空。若以前保存了失效 token，先勾选 **Clear credential／清除凭据** 并保存；单纯留空会保留旧值，旧值仍然优先。多账号可用 `gh auth switch --hostname github.com --user YOUR_USERNAME` 切换，再检查身份；把占位符换成实际用户名。
 
 点击 **Check Copilot / load models／检查 Copilot / 加载模型**。GitHub 连接成功不等于 Copilot 有权限。失败时分别检查账号、订阅、凭据有效期、SSO 和批准的网络。应用运行时使用独立数据目录，不会自动导入其他编辑器的登录。
+
+**Copilot 可用模型数 · N** 是模型数量，不是 GitHub 账号，也不能证明仓库访问成功。如果为零，请先检查 Copilot 账号访问权限，再开始分析。
 
 ## 5. 选择模型
 

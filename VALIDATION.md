@@ -3,7 +3,7 @@
 ## Automated
 
 - `npm run typecheck`: passed.
-- `npm test`: 24 tests passed at the last full check.
+- `npm test`: 27 tests passed at the last full check.
 - `npm run build`: passed.
 - `npm audit --omit=dev`: zero known production dependency vulnerabilities at the checked lockfile revision.
 - Tests cover local Git snapshots/ignore rules/branch scopes/root commits, lossless large-file chunking, traversal/symlink rejection, LF/CRLF/mixed EOL preservation, external amend detection, review decisions and stale approval checks, interrupted-review resume, description changes, remote thread pagination/resolved state, truncated patches, native repository context traversal, uncertain publication reconciliation, creation/deletion proposals, pre-push reply gating, definitively rejected publication recovery, and real local-bare Git pushes with amend/lease/race protection.
@@ -61,3 +61,10 @@ Developer ID notarization and Authenticode signing require publisher credentials
 Public installer assets are assembled from these native build artifacts. This supersedes the earlier cross-build-only runtime limitation for Windows and Intel, while interactive installation/UI acceptance on those platforms remains outstanding. No publisher signature or notarization was added. Public screenshots use synthetic data only.
 
 The source ZIP retains the tag's application code and overlays current public documentation. The release metadata records both revisions. README and setup/build guides explain why Copilot was chosen (the author's workplace-mandated tool), and explicitly exclude company source, internal documents, business data, credentials and private repository information from this public distribution.
+
+## 2.0.3 authentication diagnostics
+
+- Typecheck, all 27 tests and production build passed. New tests cover anonymous versus authenticated 404 guidance, credential/query/body redaction, no retry after a rejected write, missing-token account checks and SSO response headers.
+- English and Simplified Chinese settings/error layouts were inspected in an isolated macOS profile. A synthetic nonexistent PR produced the expected localized 404 guidance. No real PR write or Copilot generation was performed for this update.
+- The local 2.0.3 Apple Silicon DMG and ZIP passed integrity checks. Packaged Git, SQLite and native Copilot runtime passed `--smoke-test`; packaged main/preload/worker bundles match the production build.
+- Missing-token guidance does not grant repository access: users must configure their own authorized GitHub credential. Private PR import success is not claimed by these diagnostics tests.

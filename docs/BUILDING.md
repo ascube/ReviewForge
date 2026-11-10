@@ -23,7 +23,7 @@ git clone https://github.com/ascube/ReviewForge.git
 cd ReviewForge
 ```
 
-To reproduce a specific version, optionally run `git checkout v2.0.2` before installing. `main` contains the latest documentation and maintenance changes. A release's Source ZIP also contains the app code and an accompanying provenance record in the release metadata.
+To reproduce a specific version, optionally run `git checkout v2.0.3` before installing. `main` contains the latest documentation and maintenance changes. A release's Source ZIP also contains the app code and an accompanying provenance record in the release metadata.
 
 ## 3. Install locked dependencies
 
@@ -39,7 +39,7 @@ Use the supplied lockfile. Do not copy `node_modules` between systems/architectu
 npm run check
 ```
 
-This runs TypeScript checking, 24 tests using temporary repositories/mocked GitHub operations, and the production build. No live GitHub publication or Copilot account is required. The optional live Copilot script is not part of these tests.
+This runs TypeScript checking, 27 tests using temporary repositories/mocked GitHub operations, and the production build. No live GitHub publication or Copilot account is required. The optional live Copilot script is not part of these tests.
 
 ## 5. Run locally
 

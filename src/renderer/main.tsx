@@ -2013,12 +2013,18 @@ function SettingsPanel({ state, run, close, notice }: any) {
         />
         {t("Clear credential")}
       </label>
+      <small>
+        {t(
+          "PR access uses this GitHub token, independently of Copilot and GitHub CLI sign-in. Check GitHub verifies the account; private repositories also require repository permissions and any organization SSO authorization.",
+        )}
+      </small>
       <button
         disabled={state.progress.busy}
         onClick={async () => {
+          setStatus("");
           if (await save()) {
             const result = await run("githubConnection");
-            if (result) setStatus(t("Connection succeeded") + " · " + result);
+            if (result) setStatus(t("GitHub account") + " · " + result);
           }
         }}
       >
@@ -2054,10 +2060,11 @@ function SettingsPanel({ state, run, close, notice }: any) {
       <button
         disabled={state.progress.busy}
         onClick={async () => {
+          setStatus("");
           if (await save()) {
             const result = await run("connection");
             if (result)
-              setStatus(t("Connection succeeded") + " · " + result.length);
+              setStatus(t("Copilot models available") + " · " + result.length);
           }
         }}
       >

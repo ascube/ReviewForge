@@ -1,6 +1,6 @@
 import type { PR, Snapshot, Feedback, FileSnapshot } from "../shared/types";
 import { fileSnapshot } from "./git";
-import { fail, ForgeError, now, relativePath } from "./util";
+import { fail, ForgeError, now, redact, relativePath } from "./util";
 export type Fetcher = typeof fetch;
 export class GitHubRejected extends ForgeError {
   constructor(
@@ -87,17 +87,37 @@ export class GitHub {
         );
       if (response.status === 401)
         rejected(
-          "GitHub credential is invalid or expired. Update it in Settings.",
-          "GitHub 凭据无效或已过期，请在设置中更新。",
+          this.token
+            ? "GitHub credential is invalid or expired. Update it in Settings."
+            : "No GitHub token is configured. Add one in Settings → GitHub, then choose Check GitHub. Copilot and GitHub CLI sign-in do not authenticate PR requests.",
+          this.token
+            ? "GitHub 凭据无效或已过期，请在设置中更新。"
+            : "尚未配置 GitHub token。请在设置 → GitHub 中添加，然后点击检查 GitHub。Copilot 和 GitHub CLI 登录不会用于 PR 请求认证。",
         );
       if (
-        response.status === 403 &&
+        [403, 404].includes(response.status) &&
         (/saml|sso/i.test(message) || response.headers.get("x-github-sso"))
       )
         rejected(
           "Authorize this credential for your organization SSO.",
           "请为此凭据授权组织 SSO。",
         );
+      if (response.status === 404) {
+        // Never include query values, response bodies or credentials in diagnostics.
+        const resource = redact(`${method} ${endpoint.split(/[?#]/, 1)[0]}`, [
+          this.token,
+        ]).slice(0, 400);
+        rejected(
+          `GitHub could not find or grant access to this resource (404): ${resource}. ` +
+            (this.token
+              ? "Check the PR URL and the account shown by Settings → Check GitHub. That account and token need repository access, the required permissions and organization SSO authorization when applicable."
+              : "No GitHub token is configured; this request was anonymous. For a private repository, add a token with repository access in Settings → GitHub, then choose Check GitHub. Copilot and GitHub CLI sign-in do not authenticate PR requests."),
+          `GitHub 找不到此资源，或当前身份无权访问（404）：${resource}。` +
+            (this.token
+              ? "请检查 PR 链接及设置 → 检查 GitHub 显示的账号。该账号和 token 必须具有仓库访问权限、所需权限，以及适用时的组织 SSO 授权。"
+              : "尚未配置 GitHub token，本次为匿名请求。如需访问私有仓库，请在设置 → GitHub 中添加有仓库访问权限的 token，再点击检查 GitHub。Copilot 和 GitHub CLI 登录不会用于 PR 请求认证。"),
+        );
+      }
       throw new GitHubRejected(
         response.status,
         `GitHub request failed (${response.status}). Check permissions, rate limits and PR state.`,

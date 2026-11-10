@@ -189,6 +189,10 @@ const zh: Record<string, string> = {
   "Tokens are encrypted with the operating system. Publishing credentials are not passed to Copilot.":
     "Token 使用操作系统加密保存。发布凭据不会传给 Copilot。",
   "Check GitHub": "检查 GitHub",
+  "GitHub account": "GitHub 账号",
+  "Copilot models available": "Copilot 可用模型数",
+  "PR access uses this GitHub token, independently of Copilot and GitHub CLI sign-in. Check GitHub verifies the account; private repositories also require repository permissions and any organization SSO authorization.":
+    "PR 访问使用此 GitHub token，与 Copilot 和 GitHub CLI 登录相互独立。检查 GitHub 用于验证账号；访问私有仓库还需要仓库权限及组织要求的 SSO 授权。",
   "Check Copilot / load models": "检查 Copilot / 加载模型",
   Model: "模型",
   "Default model": "默认模型",

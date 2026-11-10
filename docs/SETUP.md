@@ -26,6 +26,8 @@ Use your own account with access to the target repository. Follow [GitHub's pers
 
 Paste the credential directly into **Settings → GitHub token**, then click **Check GitHub**. This saves the entered settings before testing. Confirm the reported identity is the intended account. This credential is for repository/API operations; setting it does not automatically authorize Copilot. You can skip this section for local-only review.
 
+PR requests use the saved **GitHub token**; they do not fall back to GitHub CLI or Copilot sign-in. **Check GitHub** reports **GitHub account · username**. This confirms the token identity, not access to every private repository. A 404 during import can mean a wrong URL or insufficient access; check the token's repository permissions and any organization SSO requirements.
+
 ## 4. Configure Copilot access
 
 You need an account entitled to use Copilot and any required organizational authorization. Choose one route:
@@ -41,6 +43,8 @@ You need an account entitled to use Copilot and any required organizational auth
   Complete login in the browser with the account that has Copilot access. Leave **Copilot token** empty in ReviewForge. If a stale token was already saved, use **Clear credential** and save first: an empty field alone keeps the existing credential. With multiple accounts, use `gh auth switch --hostname github.com --user YOUR_USERNAME`, then check the active identity again. Do not type the placeholder literally.
 
 Click **Check Copilot / load models**. A successful GitHub connection alone does not prove Copilot access. If access is denied, check the selected account, entitlement, credential expiry, SSO and approved network requirements. ReviewForge uses a separate runtime data directory, so another editor's login is not automatically imported.
+
+The result **Copilot models available · N** is a model count, not a GitHub account or proof of repository access. If it is zero, check Copilot account access before starting analysis.
 
 ## 5. Pick a model
 

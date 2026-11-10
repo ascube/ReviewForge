@@ -23,7 +23,7 @@ git clone https://github.com/ascube/ReviewForge.git
 cd ReviewForge
 ```
 
-若复现指定版本，可在安装前执行 `git checkout v2.0.2`。`main` 包含最新文档和维护改动；Release 的 Source ZIP 也提供应用源码，来源记录见发行元数据。
+若复现指定版本，可在安装前执行 `git checkout v2.0.3`。`main` 包含最新文档和维护改动；Release 的 Source ZIP 也提供应用源码，来源记录见发行元数据。
 
 ## 3. 安装锁定依赖
 
@@ -39,7 +39,7 @@ npm ci
 npm run check
 ```
 
-会执行 TypeScript 检查、24 项临时仓库／模拟 GitHub 测试及生产构建，不需要真实 GitHub 发布权限或 Copilot 账号。可选的真实 Copilot 验证脚本不在这组测试内。
+会执行 TypeScript 检查、27 项临时仓库／模拟 GitHub 测试及生产构建，不需要真实 GitHub 发布权限或 Copilot 账号。可选的真实 Copilot 验证脚本不在这组测试内。
 
 ## 5. 本地启动
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.3 — 2026-11-10
+
+- Explain missing GitHub tokens and distinguish anonymous 404 responses from inaccessible resources when a credential is configured. Diagnostics omit query values, response bodies and credentials.
+- Clarify that PR access uses the GitHub token in Settings, separately from Copilot and GitHub CLI authentication.
+- Label connection results as GitHub account or Copilot model count, and clear stale results before checking again.
+- Preserve the selected language for errors crossing the Electron bridge, including Simplified Chinese authentication guidance.
+- Keep all existing preview and approval gates for publication.
+
 ## 2.0.2 — 2026-11-10
 
 First public source release under the MIT License.

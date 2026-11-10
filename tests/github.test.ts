@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GitHub, parsePR } from "../src/main/github";
+import { GitHub, GitHubRejected, parsePR } from "../src/main/github";
 import type { PR } from "../src/shared/types";
 const pr: PR = {
   owner: "o",
@@ -46,6 +46,95 @@ test("GitHub auth diagnoses enterprise IP, invalid credentials and SSO in both l
       return true;
     });
   }
+});
+test("404 distinguishes anonymous PR access from configured credentials without leaking secrets", async () => {
+  for (const token of ["", "test-credential-value"]) {
+    let calls = 0;
+    const api = new GitHub(token, async (_url, init) => {
+      calls++;
+      assert.equal(
+        (init?.headers as Record<string, string>).Authorization,
+        token ? `Bearer ${token}` : undefined,
+      );
+      return Response.json(
+        { message: "private response detail" },
+        { status: 404 },
+      );
+    });
+    await assert.rejects(
+      api.request("/repos/example/project/pulls/42?secret=query-secret"),
+      (error) => {
+        assert(error instanceof GitHubRejected);
+        assert.equal(error.status, 404);
+        assert(error.definitelyRejected);
+        assert.match(error.en, /GET \/repos\/example\/project\/pulls\/42/);
+        assert.match(
+          error.en,
+          token ? /account.*Settings.*Check GitHub/ : /anonymous/,
+        );
+        assert.match(error.zh, token ? /账号和 token/ : /匿名请求/);
+        for (const message of [error.en, error.zh]) {
+          assert(!message.includes("query-secret"));
+          assert(!message.includes("private response detail"));
+          assert(!message.includes("test-credential-value"));
+        }
+        return true;
+      },
+    );
+    assert.equal(calls, 1);
+  }
+});
+test("write 404 stays definitely rejected without retrying or exposing body or credential", async () => {
+  let calls = 0;
+  const api = new GitHub("test-credential-value", async () => {
+    calls++;
+    return Response.json({ message: "private reply text" }, { status: 404 });
+  });
+  await assert.rejects(
+    api.request(
+      "/repos/example/test-credential-value/pulls/42/comments",
+      "POST",
+      {
+        body: "private reply text",
+      },
+    ),
+    (error) => {
+      assert(error instanceof GitHubRejected);
+      assert(error.definitelyRejected);
+      assert.match(error.en, /POST \/repos\/example\/\[redacted\]/);
+      assert(!error.en.includes("private reply text"));
+      assert(!error.zh.includes("test-credential-value"));
+      return true;
+    },
+  );
+  assert.equal(calls, 1);
+});
+test("anonymous account check explains missing configuration and 404 SSO evidence takes priority", async () => {
+  const anonymous = new GitHub("", async () =>
+    Response.json({ message: "Requires authentication" }, { status: 401 }),
+  );
+  await assert.rejects(anonymous.request("/user"), (error) => {
+    assert(error instanceof GitHubRejected);
+    assert.match(error.en, /No GitHub token is configured/);
+    assert.match(error.zh, /尚未配置/);
+    return true;
+  });
+  const sso = new GitHub("test", async () =>
+    Response.json(
+      { message: "Not found" },
+      {
+        status: 404,
+        headers: { "x-github-sso": "required" },
+      },
+    ),
+  );
+  await assert.rejects(sso.request("/repos/example/project"), (error) => {
+    assert(error instanceof GitHubRejected);
+    assert.equal(error.status, 404);
+    assert.match(error.en, /SSO/);
+    assert.match(error.zh, /SSO/);
+    return true;
+  });
 });
 test("thread loading includes resolved state, all paginated comments, and issue comments", async () => {
   const requests: string[] = [];
