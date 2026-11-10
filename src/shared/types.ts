@@ -10,6 +10,8 @@ export interface Settings {
   authorName: string;
   authorEmail: string;
   githubConfigured: boolean;
+  githubIdentity?: string;
+  copilotIdentity?: { login?: string; source: string };
   copilotConfigured: boolean;
 }
 export interface PR {
@@ -25,6 +27,7 @@ export interface PR {
   headRepo: string;
   baseBranch: string;
   state: string;
+  authorID?: number;
 }
 export interface FileSnapshot {
   path: string;
@@ -36,6 +39,7 @@ export interface FileSnapshot {
   omission?: string;
   reviews: Record<string, string>;
   error?: string;
+  errorZh?: string;
 }
 export interface Snapshot {
   kind: "remote" | "local";
@@ -62,6 +66,7 @@ export interface Finding {
   severity: string;
   decision: Decision;
   origin: "copilot" | "manual";
+  originalBody?: string;
 }
 export interface Feedback {
   id: string;
@@ -74,15 +79,27 @@ export interface Feedback {
   author: string;
   url: string;
   context?: string;
+  sourceBody?: string;
   resolved: boolean;
   outdated: boolean;
+  unavailable?: boolean;
   selected: boolean;
   reply: string;
+  sendReply?: boolean;
+  copilotDraft?: {
+    body: string;
+    evidence: string;
+    commit: string;
+    tree: string;
+    createdAt: string;
+  };
   resolve: boolean;
   replyPosted?: string;
   resolveDone?: boolean;
+  resolveState?: "sending" | "uncertain" | "done";
   replyAttempt?: {
     marker: string;
+    authorID?: number;
     state: "sending" | "uncertain" | "posted";
     body: string;
   };
@@ -104,6 +121,14 @@ export interface Workspace {
   head: string;
   expectedRemote: string;
   pushedHead?: string;
+  pushAttempt?: {
+    commit: string;
+    tree: string;
+    expectedRemote: string;
+    repository: string;
+    branch: string;
+    state: "sending" | "uncertain" | "ready" | "pushed";
+  };
   preview?: CodePreview;
   approval?: string;
   verification?: {
@@ -116,6 +141,9 @@ export interface Workspace {
   commit?: string;
 }
 export interface CodePreview {
+  whitespaceReport?: string;
+  commitMessage?: string;
+  author?: string;
   head: string;
   remote: string;
   digest: string;
@@ -141,6 +169,7 @@ export interface Draft {
     state: "sending" | "uncertain" | "published";
     marker: string;
     body: string;
+    authorID?: number;
     url?: string;
   };
   feedback: Feedback[];
@@ -148,6 +177,9 @@ export interface Draft {
   proposals: Proposal[];
   proposalContext?: string;
   fixSummary?: string;
+  fixBackup?: string;
+  replyContext?: { commit: string; tree: string; diff: string };
+  followUpAuthorID?: number;
   followUpApproval?: string;
 }
 export interface Progress {

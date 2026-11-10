@@ -26,7 +26,7 @@ Use your own account with access to the target repository. Follow [GitHub's pers
 
 Paste the credential directly into **Settings → GitHub token**, then click **Check GitHub**. This saves the entered settings before testing. Confirm the reported identity is the intended account. This credential is for repository/API operations; setting it does not automatically authorize Copilot. You can skip this section for local-only review.
 
-PR requests use the saved **GitHub token**; they do not fall back to GitHub CLI or Copilot sign-in. **Check GitHub** reports **GitHub account · username**. This confirms the token identity, not access to every private repository. A 404 during import can mean a wrong URL or insufficient access; check the token's repository permissions and any organization SSO requirements.
+PR requests use the saved **GitHub token**, then `GH_TOKEN`/`GITHUB_TOKEN`, then the active GitHub CLI credential. **Check GitHub** reports **GitHub account · username · credential source**. A saved token takes priority; clear it explicitly if you want to use another source. Copilot authentication remains separate. This confirms the token identity, not access to every private repository. A 404 during import can mean a wrong URL or insufficient access; check the token's repository permissions and any organization SSO requirements.
 
 ## 4. Configure Copilot access
 

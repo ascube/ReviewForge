@@ -52,7 +52,7 @@ function Markdown({ text }: { text: string }) {
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  if (href?.startsWith("https://github.com/"))
+                  if (href && /^(https?:|mailto:)/i.test(href))
                     api.call("openExternal", { url: href });
                 }}
               >
@@ -60,6 +60,22 @@ function Markdown({ text }: { text: string }) {
               </a>
             ),
             img: ({ alt }) => <span>[{alt}]</span>,
+            pre: ({ children }) => (
+              <div className="codeBlock">
+                <button
+                  onClick={() =>
+                    api.call("copy", {
+                      text: React.isValidElement(children)
+                        ? String((children.props as any).children ?? "")
+                        : String(children ?? ""),
+                    })
+                  }
+                >
+                  {t("Copy code")}
+                </button>
+                <pre>{children}</pre>
+              </div>
+            ),
           }}
         >
           {text}
@@ -227,6 +243,17 @@ function App() {
       current = false;
     };
   }, [selected]);
+  useEffect(() => {
+    const refresh = () => {
+      if (mode === "local" && !busy && repo?.directory)
+        api
+          .call<RepoInfo>("repository", { directory: repo.directory })
+          .then(setRepo)
+          .catch(() => {});
+    };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [mode, busy, repo?.directory]);
   const chosen = d?.snapshot.files.find((f) => f.path === file),
     selectedFeedback = d?.feedback.find((f) => f.id === feedbackID);
   const update = (patch: any) => act("edit", { patch });
@@ -540,6 +567,17 @@ function App() {
               <small>
                 {t("Every change starts locally. You decide what to publish.")}
               </small>
+              <button
+                onClick={async () => {
+                  const demo = await run("openDemo");
+                  if (demo) {
+                    setMode("local");
+                    selectDraft(demo);
+                  }
+                }}
+              >
+                {t("Open a demo draft")}
+              </button>
             </div>
           ) : (
             <>
@@ -823,7 +861,7 @@ function App() {
                             }
                           />
                         ) : fileTab === "Full file" ? (
-                          /\.(md|markdown)$/i.test(file) ? (
+                          /\.(md|markdown|mdown|mkd|mdx)$/i.test(file) ? (
                             <Markdown
                               text={
                                 chosen.status === "removed"
@@ -1014,9 +1052,11 @@ function App() {
                         </>
                       ) : (
                         <button
-                          onClick={() =>
-                            setModal({ type: "report", data: d.summary })
-                          }
+                          onClick={async () => {
+                            const report = await act("previewReport");
+                            if (report !== undefined)
+                              setModal({ type: "report", data: report });
+                          }}
                         >
                           {t("Preview report")}
                         </button>
@@ -1190,6 +1230,19 @@ function App() {
                       ) : (
                         <>
                           <p className="path">{d.workspace.directory}</p>
+                          <WorkspaceFiles
+                            draft={d}
+                            busy={busy}
+                            act={act}
+                            show={setModal}
+                          />
+                          {d.workspace.pushAttempt && (
+                            <p>
+                              {t("Push status")}:{" "}
+                              {t(d.workspace.pushAttempt.state)} ·{" "}
+                              {d.workspace.pushAttempt.commit.slice(0, 12)}
+                            </p>
+                          )}
                           <button onClick={() => act("openWorkspace")}>
                             {t("Open workspace")}
                           </button>
@@ -1372,6 +1425,8 @@ function App() {
                       code: "Preview code",
                       push: "Push approved commit",
                       replies: "Reply publication preview",
+                      workspace: "Edit workspace file",
+                      recovery: "Recovery preview",
                     } as any
                   )[modal.type] ?? modal.type,
                 )}
@@ -1385,6 +1440,7 @@ function App() {
               </div>
             )}
             <ModalContent
+              key={modal.type + (modal.data?.path ?? modal.data?.id ?? "")}
               modal={modal}
               draft={d}
               state={state}
@@ -1420,7 +1476,23 @@ function Proposals({ draft: d, busy, act, show }: any) {
   return (
     <div className="proposals">
       <h3>{t("Local proposals")}</h3>
+      {d.proposals.length > 0 && (
+        <button disabled={busy} onClick={() => act("discardProposals")}>
+          {t("Discard fix draft")}
+        </button>
+      )}
       {d.fixSummary && <Markdown text={d.fixSummary} />}
+      {d.fixBackup && (
+        <button
+          disabled={busy}
+          onClick={async () => {
+            const p = await act("previewRecovery");
+            if (p) show({ type: "recovery", data: p });
+          }}
+        >
+          {t("Preview recovery copy")}
+        </button>
+      )}
       <button
         disabled={
           busy ||
@@ -1505,12 +1577,19 @@ function Replies({ draft: d, busy, act, show, change, instructions }: any) {
       {d.feedback
         .filter((f: Feedback) => f.selected)
         .map((f: Feedback) => (
-          <ReplyCard key={f.id} item={f} busy={busy} change={change} />
+          <ReplyCard
+            key={f.id}
+            item={f}
+            busy={busy}
+            change={change}
+            act={act}
+            instructions={instructions}
+          />
         ))}
     </div>
   );
 }
-function ReplyCard({ item: f, busy, change }: any) {
+function ReplyCard({ item: f, busy, change, act, instructions }: any) {
   const [reply, setReply] = useState(f.reply);
   useEffect(() => setReply(f.reply), [f.reply]);
   return (
@@ -1518,10 +1597,60 @@ function ReplyCard({ item: f, busy, change }: any) {
       <strong>
         @{f.author} · {f.path}
       </strong>
+      {f.unavailable && (
+        <p className="warning">
+          {t("Comment unavailable. Verify publication before continuing.")}
+        </p>
+      )}
       <details>
         <summary>{t("Original comment")}</summary>
         <Markdown text={f.body} />
       </details>
+      <button
+        disabled={busy || !!f.replyAttempt}
+        onClick={() => act("generateReplies", { instructions, itemID: f.id })}
+      >
+        {t("Draft this reply with Copilot")}
+      </button>
+      {f.copilotDraft && (
+        <section className="suggestion">
+          <h4>{t("Copilot suggestion · Not published")}</h4>
+          <Markdown text={f.copilotDraft.body} />
+          <details>
+            <summary>{t("Evidence and limitations")}</summary>
+            <code>{f.copilotDraft.commit}</code>
+            <Markdown text={f.copilotDraft.evidence} />
+          </details>
+          <div className="row wrap">
+            <button
+              disabled={busy || reply !== f.reply}
+              onClick={() => act("useReplyDraft", { itemID: f.id, use: true })}
+            >
+              {t("Use draft")}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => act("useReplyDraft", { itemID: f.id, use: false })}
+            >
+              {t("Dismiss suggestion")}
+            </button>
+          </div>
+          {reply !== f.reply && (
+            <small>
+              {t("Save your edited reply before adopting a suggestion.")}
+            </small>
+          )}
+        </section>
+      )}
+      <label>
+        <input
+          type="checkbox"
+          checked={f.sendReply !== false}
+          disabled={busy || !!f.replyAttempt}
+          onChange={(e) => change(f, { sendReply: e.target.checked })}
+        />
+        {t("Send reply")}
+      </label>
       <textarea
         disabled={busy || !!f.replyAttempt}
         value={reply}
@@ -1547,6 +1676,10 @@ function ReplyCard({ item: f, busy, change }: any) {
           </label>
         )}
       </div>
+      <details>
+        <summary>{t("Preview reply")}</summary>
+        <Markdown text={reply} />
+      </details>
       {f.replyPosted && <small className="success">{t("Reply posted")}</small>}
     </div>
   );
@@ -1564,7 +1697,7 @@ function ModalContent({
   const [text, setText] = useState(
       typeof m.data === "string"
         ? m.data
-        : m.type === "proposal"
+        : m.type === "proposal" || m.type === "workspace"
           ? m.data.content
           : "",
     ),
@@ -1621,6 +1754,41 @@ function ModalContent({
         <Markdown text={m.data.body} />
       </>
     );
+  if (m.type === "workspace")
+    return (
+      <WorkspaceFileModal
+        data={m.data}
+        act={act}
+        close={close}
+        busy={state.progress.busy}
+      />
+    );
+  if (m.type === "recovery")
+    return (
+      <>
+        <p>
+          {t(
+            "Restore only if files still match this apply attempt. Later edits are preserved.",
+          )}
+        </p>
+        <code>{m.data.record.root}</code>
+        {m.data.diffs.map((entry: any) => (
+          <section key={entry.path}>
+            <h4>{entry.path}</h4>
+            <Diff patch={entry.diff} />
+          </section>
+        ))}
+        <button
+          disabled={state.progress.busy || m.data.record.state === "restored"}
+          onClick={async () => {
+            if (await act("restoreFix", { fingerprint: m.data.fingerprint }))
+              close();
+          }}
+        >
+          {t("Confirm restore")}
+        </button>
+      </>
+    );
   if (m.type === "report") return <Markdown text={m.data} />;
   if (m.type === "summary" || m.type === "proposal")
     return (
@@ -1630,6 +1798,10 @@ function ModalContent({
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
+        <details>
+          <summary>{t("Preview")}</summary>
+          <Markdown text={text} />
+        </details>
         <div className="modalFoot">
           <button
             className="primary"
@@ -1655,6 +1827,12 @@ function ModalContent({
       setFinding({ ...finding, ...patch });
     return (
       <div className="form">
+        {finding.origin === "copilot" && finding.originalBody && (
+          <details>
+            <summary>{t("Original AI finding")}</summary>
+            <Markdown text={finding.originalBody} />
+          </details>
+        )}
         <label>
           {t("Title")}
           <input
@@ -1863,6 +2041,38 @@ function ModalContent({
             )}
           </span>
         </div>
+        <p>
+          {d.snapshot.pr?.headRepo} → {d.snapshot.pr?.branch}
+        </p>
+        <p>{m.data.preview?.commitMessage}</p>
+        <p className="muted">{m.data.preview?.author}</p>
+        <small>
+          {t("Expected remote commit")}: {m.data.preview?.remote}
+        </small>
+        {m.data.preview?.whitespaceReport && (
+          <details>
+            <summary>{t("Diff whitespace warnings")}</summary>
+            <pre>{m.data.preview.whitespaceReport}</pre>
+          </details>
+        )}
+        {d.workspace?.verification?.digest === m.data.preview?.digest ? (
+          <details>
+            <summary>
+              {t(d.workspace.verification.passed ? "Passed" : "Failed")}
+            </summary>
+            <pre>
+              {d.workspace.verification.command +
+                "\n" +
+                d.workspace.verification.output}
+            </pre>
+          </details>
+        ) : (
+          <p className="muted">
+            {t(
+              "No current verification result. ReviewForge has not verified these changes with tests.",
+            )}
+          </p>
+        )}
         <div className="previewScroll">
           <Diff patch={m.data.preview?.diff ?? ""} />
         </div>
@@ -1910,13 +2120,19 @@ function ModalContent({
     return (
       <>
         <code>{m.data.head}</code>
+        {m.data.context && (
+          <details>
+            <summary>{t("Confirmed code changes")}</summary>
+            <Diff patch={m.data.context.diff} />
+          </details>
+        )}
         <div className="previewScroll">
           {m.data.items.map((f: Feedback) => (
             <section key={f.id}>
               <strong>
                 @{f.author} · {f.path}
               </strong>
-              <Markdown text={f.reply} />
+              {f.sendReply !== false && <Markdown text={f.reply} />}
               {f.resolve && (
                 <p className="success">✓ {t("Resolve thread after reply")}</p>
               )}
@@ -2015,7 +2231,7 @@ function SettingsPanel({ state, run, close, notice }: any) {
       </label>
       <small>
         {t(
-          "PR access uses this GitHub token, independently of Copilot and GitHub CLI sign-in. Check GitHub verifies the account; private repositories also require repository permissions and any organization SSO authorization.",
+          "PR access uses the saved token, then GH_TOKEN/GITHUB_TOKEN, then GitHub CLI. Check GitHub shows the account and credential source. Private repositories require repository access and any organization SSO authorization.",
         )}
       </small>
       <button
@@ -2031,6 +2247,12 @@ function SettingsPanel({ state, run, close, notice }: any) {
         {t("Check GitHub")}
       </button>
       <h3>GitHub Copilot</h3>
+      {state.settings.copilotIdentity && (
+        <small>
+          {state.settings.copilotIdentity.login ?? t("Account not reported")} ·{" "}
+          {t(state.settings.copilotIdentity.source)}
+        </small>
+      )}
       <label>
         {t("Copilot token")} ·{" "}
         {t(state.settings.copilotConfigured ? "Saved" : "Not configured")}
@@ -2134,3 +2356,113 @@ function SettingsPanel({ state, run, close, notice }: any) {
   );
 }
 createRoot(document.getElementById("root")!).render(<App />);
+
+function WorkspaceFiles({ draft, busy, act, show }: any) {
+  const [files, setFiles] = useState<string[]>([]),
+    [selected, setSelected] = useState("");
+  useEffect(() => {
+    if (busy) return;
+    let live = true;
+    act("workspaceFiles").then((list: string[]) => {
+      if (live && list) {
+        setFiles(list);
+        setSelected((prev) => (list.includes(prev) ? prev : (list[0] ?? "")));
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [draft.id, draft.workspace?.preview?.digest, busy]);
+  return (
+    <div className="workspaceFiles">
+      <select
+        aria-label={t("Workspace file")}
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+      >
+        {files.map((file) => (
+          <option key={file}>{file}</option>
+        ))}
+      </select>
+      <button
+        disabled={busy || !selected}
+        onClick={async () => {
+          const result = await act("readWorkspaceFile", { path: selected });
+          if (result) show({ type: "workspace", data: result });
+        }}
+      >
+        {t("Edit workspace file")}
+      </button>
+    </div>
+  );
+}
+function WorkspaceFileModal({ data, act, close, busy }: any) {
+  const [content, setContent] = useState(data.content),
+    [discard, setDiscard] = useState(false);
+  return (
+    <>
+      <p className="path">{data.path}</p>
+      <textarea
+        className="largeEditor"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+      />
+      <button onClick={() => api.call("copy", { text: content })}>
+        {t("Copy raw")}
+      </button>
+      {/\.(md|markdown|mdown|mkd|mdx)$/i.test(data.path) && (
+        <details>
+          <summary>{t("Preview")}</summary>
+          <Markdown text={content} />
+        </details>
+      )}
+      <details>
+        <summary>{t("HEAD version")}</summary>
+        <pre className="raw">
+          {data.original ?? t("File not present in HEAD")}
+        </pre>
+      </details>
+      <div className="row wrap">
+        <button
+          disabled={busy}
+          onClick={async () => {
+            if (
+              await act("writeWorkspaceFile", {
+                path: data.path,
+                content,
+                fingerprint: data.fingerprint,
+              })
+            )
+              close();
+          }}
+        >
+          {t("Save file")}
+        </button>
+        <label>
+          <input
+            type="checkbox"
+            checked={discard}
+            onChange={(e) => setDiscard(e.target.checked)}
+          />
+          {t("Confirm discard of this file's changes")}
+        </label>
+        <button
+          disabled={busy || !discard}
+          onClick={async () => {
+            if (
+              await act("writeWorkspaceFile", {
+                path: data.path,
+                content: "",
+                fingerprint: data.fingerprint,
+                discard: true,
+              })
+            )
+              close();
+          }}
+        >
+          {t("Discard file changes")}
+        </button>
+      </div>
+    </>
+  );
+}

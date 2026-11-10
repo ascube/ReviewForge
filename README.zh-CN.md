@@ -115,3 +115,7 @@ ReviewForge 源码和原创资源使用 [MIT 许可证](LICENSE)。内置的第�
 需要 Node.js 24+：`npm ci` → `npm run check` → `npm start`。打包方式参见[英文说明](README.md#development)。
 
 欢迎提交 [Issue](https://github.com/ascube/ReviewForge/issues) 或 PR。请先阅读 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md) 和 [验证记录](VALIDATION.md)。公开问题中不要上传凭据、公司代码或未脱敏日志。
+
+## 功能对照与恢复
+
+2.1 已补齐对照 Swift 版发现的工作流缺口，包括修复恢复副本、推送中断核实、发布身份检查、逐条回复建议、工作区内编辑和完整 Markdown 报告。详见[功能对照清单](docs/FEATURE_PARITY.zh-CN.md)。旧 Swift 数据迁移和 iPad 不属于本次 Windows/macOS 版本范围。

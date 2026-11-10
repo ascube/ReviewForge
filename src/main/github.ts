@@ -89,10 +89,10 @@ export class GitHub {
         rejected(
           this.token
             ? "GitHub credential is invalid or expired. Update it in Settings."
-            : "No GitHub token is configured. Add one in Settings → GitHub, then choose Check GitHub. Copilot and GitHub CLI sign-in do not authenticate PR requests.",
+            : "No GitHub token is configured. Add one in Settings → GitHub, then choose Check GitHub. No saved, environment or GitHub CLI credential was found.",
           this.token
             ? "GitHub 凭据无效或已过期，请在设置中更新。"
-            : "尚未配置 GitHub token。请在设置 → GitHub 中添加，然后点击检查 GitHub。Copilot 和 GitHub CLI 登录不会用于 PR 请求认证。",
+            : "尚未配置 GitHub token。请在设置 → GitHub 中添加，然后点击检查 GitHub。未找到已保存、环境变量或 GitHub CLI 凭据。",
         );
       if (
         [403, 404].includes(response.status) &&
@@ -111,11 +111,11 @@ export class GitHub {
           `GitHub could not find or grant access to this resource (404): ${resource}. ` +
             (this.token
               ? "Check the PR URL and the account shown by Settings → Check GitHub. That account and token need repository access, the required permissions and organization SSO authorization when applicable."
-              : "No GitHub token is configured; this request was anonymous. For a private repository, add a token with repository access in Settings → GitHub, then choose Check GitHub. Copilot and GitHub CLI sign-in do not authenticate PR requests."),
+              : "No GitHub token is configured; this request was anonymous. For a private repository, add a token with repository access in Settings → GitHub, then choose Check GitHub. No saved, environment or GitHub CLI credential was found."),
           `GitHub 找不到此资源，或当前身份无权访问（404）：${resource}。` +
             (this.token
               ? "请检查 PR 链接及设置 → 检查 GitHub 显示的账号。该账号和 token 必须具有仓库访问权限、所需权限，以及适用时的组织 SSO 授权。"
-              : "尚未配置 GitHub token，本次为匿名请求。如需访问私有仓库，请在设置 → GitHub 中添加有仓库访问权限的 token，再点击检查 GitHub。Copilot 和 GitHub CLI 登录不会用于 PR 请求认证。"),
+              : "尚未配置 GitHub token，本次为匿名请求。如需访问私有仓库，请在设置 → GitHub 中添加有仓库访问权限的 token，再点击检查 GitHub。未找到已保存、环境变量或 GitHub CLI 凭据。"),
         );
       }
       throw new GitHubRejected(
@@ -126,6 +126,28 @@ export class GitHub {
     }
     return response.status === 204 ? null : response.json();
   }
+  async currentUser(): Promise<{ id: number; login: string }> {
+    const user = await this.request("/user");
+    if (!Number.isSafeInteger(user?.id) || !user?.login)
+      fail("GitHub identity could not be verified.", "无法验证 GitHub 身份。");
+    return user;
+  }
+  async containsCommit(repository: string, commit: string, head: string) {
+    if (commit === head) return true;
+    try {
+      const result = await this.request(
+        `/repos/${repository}/compare/${encodeURIComponent(commit)}...${encodeURIComponent(head)}`,
+      );
+      return (
+        ["ahead", "identical"].includes(result.status) &&
+        result.base_commit?.sha === commit
+      );
+    } catch (error) {
+      if (error instanceof GitHubRejected && error.status === 404) return false;
+      throw error;
+    }
+  }
+
   async pages(endpoint: string): Promise<any[]> {
     const all = [];
     for (let page = 1; page <= 1000; page++) {
@@ -134,7 +156,8 @@ export class GitHub {
           (endpoint.includes("?") ? "&" : "?") +
           `per_page=100&page=${page}`,
       );
-      if (!Array.isArray(rows)) throw Error("Invalid GitHub list");
+      if (!Array.isArray(rows))
+        fail("GitHub returned an invalid list.", "GitHub 返回了无效列表。");
       all.push(...rows);
       if (rows.length < 100) return all;
     }
@@ -160,6 +183,7 @@ export class GitHub {
       headRepo: p.head.repo.full_name,
       baseBranch: p.base.ref,
       state: p.state,
+      authorID: p.user?.id,
     };
   }
   async file(slug: string, ref: string, filename: string): Promise<Buffer> {
@@ -343,6 +367,7 @@ export class GitHub {
           author: first.author?.login ?? "unknown",
           url: first.url,
           context: first.diffHunk,
+          sourceBody: first.body,
           resolved: thread.isResolved,
           outdated: thread.isOutdated,
           selected: false,
@@ -390,15 +415,18 @@ export class GitHub {
       { body },
     );
   }
-  async postedReply(pr: PR, item: Feedback, marker: string) {
+  async postedReply(pr: PR, item: Feedback, marker: string, authorID?: number) {
     const rows = await this.pages(
       `/repos/${pr.owner}/${pr.repo}/${item.threadID ? `pulls/${pr.number}/comments` : `issues/${pr.number}/comments`}`,
     );
-    return rows.find(
+    const matches = rows.filter(
       (c) =>
+        authorID !== undefined &&
+        c.user?.id === authorID &&
         c.body?.includes(marker) &&
         (!item.threadID || c.in_reply_to_id === item.commentID),
     );
+    return matches.length === 1 ? matches[0] : undefined;
   }
   async resolve(threadID: string) {
     return this.graphql(

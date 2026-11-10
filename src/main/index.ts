@@ -14,6 +14,10 @@ import path from "node:path";
 import os from "node:os";
 import { z } from "zod";
 import { createTwoFilesPatch } from "diff";
+import { atomicFile } from "./recovery";
+import { copyStore } from "./storage";
+import { githubCredential } from "./credentials";
+import { reviewReport } from "./report";
 import { Store } from "./store";
 import { Service } from "./service";
 import { Copilot } from "./copilot";
@@ -68,10 +72,10 @@ const emit = () => {
     window.webContents.send("state", service.state());
 };
 async function savePrefs() {
-  await fs.writeFile(
+  await atomicFile(
     path.join(configDirectory, "settings.json"),
-    JSON.stringify(prefs, null, 2),
-    { mode: 0o600 },
+    Buffer.from(JSON.stringify(prefs, null, 2)),
+    0o600,
   );
 }
 const choose = async (title: string) => {
@@ -222,62 +226,36 @@ async function dispatch(method: string, args: any) {
       prefs.language === "en" ? "Choose new data folder" : "选择新的数据文件夹",
     );
     if (!parent) return;
-    const target = path.join(parent, "ReviewForgeDesktopData");
-    if (path.resolve(target) === path.resolve(service.store.directory)) return;
-    if (target.startsWith(path.resolve(service.store.directory) + path.sep))
-      fail(
-        "Choose a folder outside the current data directory.",
-        "请选择当前数据目录以外的文件夹。",
-      );
-    try {
-      await fs.access(target);
-      fail(
-        "Target folder already exists. Choose an empty location.",
-        "目标文件夹已存在，请选择空位置。",
-      );
-    } catch (e: any) {
-      if (e.code !== "ENOENT") throw e;
-    }
-    const old = service.store.directory;
-    service.store.close();
-    try {
-      await fs.cp(old, target, {
-        recursive: true,
-        errorOnExist: true,
-        force: false,
-      });
-      service.store = new Store(target);
-      for (const d of service.store.list())
-        if (d.workspace?.directory.startsWith(old + path.sep)) {
-          d.workspace.directory = path.join(
-            target,
-            path.relative(old, d.workspace.directory),
-          );
-          d.workspace.preview = undefined;
-          d.workspace.approval = undefined;
-          d.followUpApproval = undefined;
-          service.store.save(d);
-        }
-      prefs.dataDirectory = target;
-      await savePrefs();
-    } catch (e) {
-      service.store = new Store(old);
-      throw e;
-    }
-    emit();
-    return service.state();
+    return service.operation("Moving local data", undefined, async () => {
+      const previous = service.store,
+        previousPrefs = { ...prefs };
+      const target = path.join(parent, "ReviewForgeDesktopData");
+      const copied = await copyStore(previous, target);
+      try {
+        prefs.dataDirectory = copied.directory;
+        await savePrefs();
+        service.store = copied;
+        previous.close();
+      } catch (error) {
+        prefs = previousPrefs;
+        service.settings = prefs;
+        copied.close();
+        throw error;
+      }
+      return service.state();
+    });
   }
+
   if (method === "openExternal") {
     const u = new URL(z.string().parse(args.url));
     if (
-      u.protocol !== "https:" ||
-      u.hostname !== "github.com" ||
+      !["https:", "http:", "mailto:"].includes(u.protocol) ||
       u.username ||
       u.password
     )
       fail(
-        "Only GitHub HTTPS links can be opened.",
-        "只能打开 GitHub HTTPS 链接。",
+        "Only HTTP, HTTPS and mail links can be opened.",
+        "只能打开 HTTP、HTTPS 和邮件链接。",
       );
     return shell.openExternal(u.toString());
   }
@@ -292,14 +270,36 @@ async function dispatch(method: string, args: any) {
     const d = service.store.get(args.id);
     const r = await dialog.showSaveDialog(window, {
       title: prefs.language === "en" ? "Export review" : "导出审查",
-      defaultPath: `ReviewForge-${d.id}.json`,
-      filters: [{ name: "JSON", extensions: ["json"] }],
+      defaultPath: `ReviewForge-${d.id}.${d.snapshot.kind === "local" ? "md" : "json"}`,
+      filters:
+        d.snapshot.kind === "local"
+          ? [{ name: "Markdown", extensions: ["md"] }]
+          : [{ name: "JSON", extensions: ["json"] }],
     });
-    if (r.filePath) await fs.writeFile(r.filePath, JSON.stringify(d, null, 2));
+    if (r.filePath)
+      await fs.writeFile(
+        r.filePath,
+        d.snapshot.kind === "local"
+          ? reviewReport(d, prefs.language)
+          : JSON.stringify(d, null, 2),
+      );
     return;
   }
+  if (method === "openDemo") return service.openDemo();
   if (method === "connection") return service.connection();
-  if (method === "githubConnection") return service.githubConnection();
+  if (method === "githubConnection") {
+    const credential = await githubCredential(await readSecret("github"));
+    const login = await service.githubConnection();
+    const source =
+      prefs.language === "zh-Hans"
+        ? (({ Settings: "设置", Anonymous: "匿名" } as Record<string, string>)[
+            credential.source
+          ] ?? credential.source)
+        : credential.source;
+    prefs.githubIdentity = `${login} · ${source}`;
+    emit();
+    return prefs.githubIdentity;
+  }
   if (method === "importPR")
     return service.importPR(z.string().parse(args.url));
   if (method === "capture")
@@ -314,6 +314,45 @@ async function dispatch(method: string, args: any) {
         .parse(args),
     );
   const id = z.string().uuid().parse(args.id);
+  if (method === "discardProposals") {
+    const draft = service.draft(id),
+      fingerprint = digest(draft.proposals);
+    const zh = prefs.language === "zh-Hans";
+    const result = await dialog.showMessageBox(window, {
+      type: "warning",
+      message: zh ? "丢弃本地修复草稿？" : "Discard local fix draft?",
+      detail: zh
+        ? "已应用的文件和恢复副本会保留。"
+        : "Applied files and recovery copies are kept.",
+      buttons: zh ? ["取消", "丢弃"] : ["Cancel", "Discard"],
+      cancelId: 0,
+      defaultId: 0,
+    });
+    if (result.response === 1) return service.discardProposals(id, fingerprint);
+    return;
+  }
+  if (method === "previewReport")
+    return reviewReport(service.draft(id), prefs.language);
+  if (method === "workspaceFiles") return service.workspaceFiles(id);
+  if (method === "readWorkspaceFile")
+    return service.readWorkspaceFile(id, z.string().parse(args.path));
+  if (method === "writeWorkspaceFile")
+    return service.writeWorkspaceFile(
+      id,
+      z.string().parse(args.path),
+      z.string().parse(args.content),
+      z.string().parse(args.fingerprint),
+      z.boolean().parse(args.discard ?? false),
+    );
+  if (method === "previewRecovery") return service.previewRecovery(id);
+  if (method === "restoreFix")
+    return service.restoreFix(id, z.string().parse(args.fingerprint));
+  if (method === "useReplyDraft")
+    return service.useReplyDraft(
+      id,
+      z.string().parse(args.itemID),
+      z.boolean().parse(args.use),
+    );
   if (method === "edit") return service.edit(id, args.patch);
   if (method === "archive")
     return service.archive(id, z.boolean().parse(args.archived));
@@ -417,6 +456,7 @@ async function dispatch(method: string, args: any) {
     return service.generateReplies(
       id,
       z.string().max(20000).parse(args.instructions),
+      z.string().optional().parse(args.itemID),
     );
   if (method === "previewReplies") return service.previewReplies(id);
   if (method === "approveReplies")
@@ -470,13 +510,31 @@ app
     };
     prefs.githubConfigured = Boolean(await readSecret("github"));
     prefs.copilotConfigured = Boolean(await readSecret("copilot"));
+    if (
+      saved.dataDirectory &&
+      saved.dataDirectory !== path.join(configDirectory, "data")
+    ) {
+      try {
+        await fs.access(path.join(saved.dataDirectory, "reviews.sqlite"));
+      } catch {
+        fail(
+          "The configured data folder is unavailable. Reconnect its drive before starting ReviewForge. Existing data has not been replaced.",
+          "配置的数据目录不可用，请重新连接所在磁盘后启动 ReviewForge。原有数据未被替换。",
+        );
+      }
+    }
     const store = new Store(prefs.dataDirectory);
     store.recover();
     service = new Service(
       store,
       prefs,
       new Copilot(),
-      { read: readSecret },
+      {
+        read: async (key) =>
+          key === "github"
+            ? (await githubCredential(await readSecret(key))).token
+            : readSecret(key),
+      },
       emit,
     );
     menus();
@@ -508,7 +566,7 @@ app
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
   })
-  .catch(async () => {
+  .catch(async (error) => {
     if (smokeTest) {
       console.error("Native smoke test failed");
       app.exit(1);
@@ -517,7 +575,15 @@ app
     await dialog.showMessageBox({
       type: "error",
       message:
-        "ReviewForge could not open its local data. / 无法打开本地数据。",
+        prefs?.language === "zh-Hans"
+          ? "ReviewForge 无法打开本地数据。"
+          : "ReviewForge could not open its local data.",
+      detail:
+        error instanceof ForgeError
+          ? prefs?.language === "zh-Hans"
+            ? error.zh
+            : error.en
+          : redact(String(error)),
     });
     app.quit();
   });

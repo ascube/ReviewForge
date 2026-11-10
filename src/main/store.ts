@@ -38,11 +38,15 @@ export class Store {
   delete(id: string) {
     const d = this.get(id);
     if (
+      (d.workspace?.pushAttempt &&
+        ["sending", "uncertain"].includes(d.workspace.pushAttempt.state)) ||
       (d.publication && d.publication.state !== "published") ||
       d.feedback.some(
         (f) =>
           f.replyAttempt?.state === "uncertain" ||
-          f.replyAttempt?.state === "sending",
+          f.replyAttempt?.state === "sending" ||
+          f.resolveState === "sending" ||
+          f.resolveState === "uncertain",
       )
     )
       fail(
@@ -54,6 +58,10 @@ export class Store {
   recover() {
     for (const d of this.list()) {
       let changed = false;
+      if (d.workspace?.pushAttempt?.state === "sending") {
+        d.workspace.pushAttempt.state = "uncertain";
+        changed = true;
+      }
       if (d.analysisState === "running") {
         d.analysisState = "interrupted";
         changed = true;
@@ -62,11 +70,16 @@ export class Store {
         d.publication.state = "uncertain";
         changed = true;
       }
-      for (const f of d.feedback)
+      for (const f of d.feedback) {
+        if (f.resolveState === "sending") {
+          f.resolveState = "uncertain";
+          changed = true;
+        }
         if (f.replyAttempt?.state === "sending") {
           f.replyAttempt.state = "uncertain";
           changed = true;
         }
+      }
       if (changed) this.save(d);
     }
   }

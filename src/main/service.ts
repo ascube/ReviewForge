@@ -26,6 +26,9 @@ import {
   createIsolated,
   runVerification,
   withTemporaryIndex,
+  validateLocalSnapshot,
+  workingTree,
+  headOrEmpty,
 } from "./git";
 import {
   newDraft,
@@ -49,6 +52,13 @@ import {
   relativePath,
   ForgeError,
 } from "./util";
+import {
+  prepareRecovery,
+  applyRecovery,
+  recoveryPreview,
+  restoreRecovery,
+  relocateRecovery,
+} from "./recovery";
 export interface AI {
   run(
     message: any,
@@ -146,15 +156,29 @@ export class Service {
   }
   async connection() {
     return this.operation("Connecting", undefined, async () => {
-      this.models = await this.ai.run(
+      this.models = [];
+      this.settings.copilotIdentity = undefined;
+      this.changed();
+      const result = await this.ai.run(
         await this.aiMessage("check", {}),
         async () => null,
       );
+      this.models = z
+        .array(z.string())
+        .parse(Array.isArray(result) ? result : result.models);
+      this.settings.copilotIdentity = Array.isArray(result)
+        ? undefined
+        : z
+            .object({
+              login: z.string().optional(),
+              source: z.enum(["Settings", "GitHub CLI", "SDK login"]),
+            })
+            .parse(result.identity);
       return this.models;
     });
   }
   async githubConnection() {
-    return (await this.api()).request("/user").then((u) => u.login);
+    return (await this.api()).currentUser().then((u) => u.login);
   }
   private async aiMessage(mode: string, context: unknown, scope = "detailed") {
     return {
@@ -177,6 +201,53 @@ export class Service {
         ),
       ),
     );
+  }
+  async openDemo() {
+    return this.operation("Opening demo", undefined, async () => {
+      const root = path.join(this.store.directory, "examples", randomUUID());
+      await fs.mkdir(root, { recursive: true });
+      await git(root, ["init", "-b", "demo"]);
+      const code =
+        "export function average(values: number[]) {\n  return values.reduce((sum, n) => sum + n, 0) / values.length;\n}\n";
+      await fs.writeFile(path.join(root, "average.ts"), code);
+      const d = newDraft(
+        await captureLocal(root, "repository", "", "", () => {}),
+      );
+      d.snapshot.title = "Demo · Average calculator";
+      const en = this.settings.language === "en";
+      d.summary = en
+        ? "## Offline demonstration\n\nSynthetic example, not a live Copilot result. No tests were run."
+        : "## 离线示例\n\n这是合成示例，不是实时 Copilot 结果。未运行测试。";
+      d.findings = [
+        {
+          id: randomUUID(),
+          path: "average.ts",
+          line: 2,
+          side: "RIGHT",
+          title: en ? "Handle an empty array" : "处理空数组",
+          body: en
+            ? "An empty array produces NaN because the divisor is zero. Decide what an empty input should return before dividing."
+            : "空数组的除数为零，结果为 NaN。请先确定空输入应返回什么，再执行除法。",
+          kind: "bug",
+          severity: "P2",
+          decision: "pending",
+          origin: "manual",
+        },
+      ];
+      return this.save(d);
+    });
+  }
+  discardProposals(id: string, expected: string) {
+    const d = this.draft(id);
+    if (digest(d.proposals) !== expected)
+      fail(
+        "Proposals changed. Preview them again.",
+        "建议已变化，请重新预览。",
+      );
+    d.proposals = [];
+    d.proposalContext = undefined;
+    d.fixSummary = undefined;
+    return this.save(d);
   }
   async capture(args: {
     directory: string;
@@ -214,12 +285,21 @@ export class Service {
               id: z.string(),
               origin: z.enum(["copilot", "manual"]),
               decision: z.enum(["pending", "include", "exclude"]),
+              originalBody: z.string().optional(),
             }),
           )
           .optional(),
       })
       .strict()
       .parse(patch);
+    if (value.findings)
+      value.findings = value.findings.map((f) => ({
+        ...f,
+        originalBody:
+          d.findings.find((old) => old.id === f.id)?.originalBody ??
+          d.findings.find((old) => old.id === f.id)?.body ??
+          f.body,
+      }));
     Object.assign(d, value);
     d.approval = undefined;
     return this.save(d);
@@ -245,6 +325,7 @@ export class Service {
         for (const f of d.snapshot.files) {
           f.reviews = {};
           f.error = undefined;
+          f.errorZh = undefined;
         }
       d.analysisScope = d.scope;
       d.analysisState = "running";
@@ -256,7 +337,7 @@ export class Service {
         0,
       );
       let done = all.reduce((n, f) => n + Object.keys(f.reviews).length, 0);
-      const api = await this.api();
+      const api = d.snapshot.pr ? await this.api() : new GitHub("");
       let repositoryPaths: string[] | undefined;
       let currentPath = "";
       try {
@@ -350,7 +431,11 @@ export class Service {
                   const f = d.snapshot.files.find((x) => x.path === filename);
                   let text: string;
                   if (f) {
-                    if (f.omission) throw Error(f.omission);
+                    if (f.omission)
+                      fail(
+                        "This file is unavailable for review.",
+                        "该文件无法用于审查。",
+                      );
                     text = f.status === "removed" ? f.before : f.after;
                   } else {
                     const b = d.snapshot.pr
@@ -371,13 +456,14 @@ export class Service {
                   }
                   return this.page(text, a.offset);
                 }
-                throw Error("Unsupported tool");
+                fail("Unsupported model tool.", "不支持此模型工具。");
               },
             );
             d = this.store.get(id);
             const stored = d.snapshot.files.find((f) => f.path === file.path)!;
             stored.reviews[String(n)] = String(result);
             stored.error = undefined;
+            stored.errorZh = undefined;
             this.save(d);
             done++;
           }
@@ -404,7 +490,10 @@ export class Service {
         d = this.store.get(id);
         d.analysisState = "interrupted";
         const f = d.snapshot.files.find((f) => f.path === currentPath);
-        if (f) f.error = e instanceof ForgeError ? e.en : "Review interrupted";
+        if (f) {
+          f.error = e instanceof ForgeError ? e.en : "Review interrupted";
+          f.errorZh = e instanceof ForgeError ? e.zh : "审查已中断";
+        }
         this.save(d);
         throw e;
       }
@@ -455,6 +544,21 @@ export class Service {
         );
       const api = await this.api();
       const current = await api.pr(d.snapshot.pr);
+      const user = await api.currentUser();
+      if (d.event !== "COMMENT" && user.id === current.authorID)
+        fail(
+          "You cannot approve or request changes on your own PR. Choose Comment.",
+          "不能批准自己的 PR 或要求修改，请选择评论。",
+        );
+      if (
+        (await api.reviews(current)).some(
+          (r) => r.user?.id === user.id && r.state === "PENDING",
+        )
+      )
+        fail(
+          "You have a pending review on GitHub. Submit or delete it there first.",
+          "GitHub 上已有待提交审查，请先在那里提交或删除。",
+        );
       if (
         current.head !== d.snapshot.head ||
         current.base !== d.snapshot.base ||
@@ -467,14 +571,30 @@ export class Service {
         );
       const marker = `<!-- ReviewForge:${id}:${crypto.randomUUID()} -->`;
       const body = d.summary + "\n\n" + marker;
-      d.publication = { state: "sending", marker, body };
+      d.publication = { state: "sending", marker, body, authorID: user.id };
       this.save(d);
       try {
         const r = await api.createReview(current, {
           ...reviewPayload(d),
           body,
         });
-        d.publication = { state: "published", marker, body, url: r.html_url };
+        if (
+          r.commit_id !== d.snapshot.head ||
+          r.user?.id !== user.id ||
+          !["COMMENTED", "APPROVED", "CHANGES_REQUESTED"].includes(r.state) ||
+          !r.html_url
+        )
+          fail(
+            "The returned review does not match this publication. Verify its status before retrying.",
+            "返回的审查与本次发布不一致，请先核实状态，不要重试发布。",
+          );
+        d.publication = {
+          state: "published",
+          marker,
+          body,
+          authorID: user.id,
+          url: r.html_url,
+        };
         return this.save(d);
       } catch (e) {
         if (e instanceof GitHubRejected && e.definitelyRejected) {
@@ -490,12 +610,17 @@ export class Service {
     return this.operation("Verifying publication", id, async () => {
       const d = this.draft(id);
       if (!d.publication || !d.snapshot.pr) return d;
-      const matches = (await (await this.api()).reviews(d.snapshot.pr)).filter(
+      const api = await this.api();
+      const authorID = d.publication.authorID ?? (await api.currentUser()).id;
+      const matches = (await api.reviews(d.snapshot.pr)).filter(
         (r) =>
           r.body?.includes(d.publication!.marker) &&
-          r.commit_id === d.snapshot.head,
+          r.commit_id === d.snapshot.head &&
+          r.user?.id === authorID &&
+          ["COMMENTED", "APPROVED", "CHANGES_REQUESTED"].includes(r.state),
       );
       if (matches.length === 1) {
+        d.publication.authorID = authorID;
         d.publication.state = "published";
         d.publication.url = matches[0].html_url;
         return this.save(d);
@@ -512,18 +637,30 @@ export class Service {
       if (!d.snapshot.pr)
         fail("Select a remote PR first.", "请先选择远程 PR。");
       const list = await (await this.api()).feedback(d.snapshot.pr);
+      const missing = d.feedback.filter(
+        (f) =>
+          !list.some((next) => next.id === f.id) &&
+          (f.reply.trim() ||
+            f.copilotDraft ||
+            f.replyAttempt ||
+            f.resolveState),
+      );
       d.feedback = list.map((f) => {
         const old = d.feedback.find((x) => x.id === f.id);
         return {
           ...f,
           selected: !f.resolved && (old?.selected ?? false),
           reply: old?.reply ?? "",
+          sendReply: old?.sendReply ?? true,
+          copilotDraft: old?.body === f.body ? old.copilotDraft : undefined,
           resolve: !f.resolved && (old?.resolve ?? Boolean(f.threadID)),
           replyPosted: old?.replyPosted,
           resolveDone: f.resolved || old?.resolveDone,
+          resolveState: f.resolved ? "done" : old?.resolveState,
           replyAttempt: old?.replyAttempt,
         };
       });
+      d.feedback.push(...missing.map((f) => ({ ...f, unavailable: true })));
       d.followUpApproval = undefined;
       return this.save(d);
     });
@@ -536,6 +673,7 @@ export class Service {
           selected: z.boolean(),
           reply: z.string().max(60000),
           resolve: z.boolean(),
+          sendReply: z.boolean().optional(),
         }),
       )
       .parse(items);
@@ -618,7 +756,7 @@ export class Service {
   async moveWorkspace(id: string, destination: string) {
     return this.operation("Moving workspace", id, async () => {
       const d = this.draft(id);
-      if (!d.workspace) throw Error("No workspace");
+      if (!d.workspace) fail("No workspace.", "没有工作区。");
       const target = path.join(destination, `ReviewForge-${id}`);
       try {
         await fs.access(target);
@@ -645,6 +783,12 @@ export class Service {
           "Workspace copy could not be verified. Original workspace is preserved.",
           "无法验证工作区副本，原工作区已保留。",
         );
+      if (d.fixBackup)
+        await relocateRecovery(
+          d.fixBackup,
+          await fs.realpath(d.workspace.directory),
+          await fs.realpath(target),
+        );
       d.workspace.directory = target;
       d.workspace.preview = undefined;
       d.workspace.approval = undefined;
@@ -670,6 +814,24 @@ export class Service {
           "Select feedback or review findings first.",
           "请先选择反馈或生成审查问题。",
         );
+      await validateLocalSnapshot(d.snapshot);
+      if (d.workspace && (await headOrEmpty(root)) !== d.workspace.head)
+        fail(
+          "Workspace HEAD changed. Synchronize before generating fixes.",
+          "工作区 HEAD 已变化，请先同步再生成修复。",
+        );
+      if (d.fixBackup) {
+        const recovery = await recoveryPreview(d.fixBackup);
+        if (
+          ["prepared", "applying", "needsRecovery"].includes(
+            recovery.record.state,
+          )
+        )
+          fail(
+            "Recover the previous apply attempt before generating more changes.",
+            "请先恢复上次应用操作，再生成新的修改。",
+          );
+      }
       const beforeDigest = await workspaceDigest(root);
       const names = (
         await git(root, [
@@ -796,7 +958,7 @@ export class Service {
                 : "New file: supplied line endings retained.",
             };
           }
-          throw Error("Unsupported tool");
+          fail("Unsupported model tool.", "不支持此模型工具。");
         },
       );
       d = this.store.get(id);
@@ -833,7 +995,7 @@ export class Service {
         d.snapshot.kind === "local"
           ? d.snapshot.repository
           : d.workspace?.directory;
-      if (!root) throw Error("No workspace");
+      if (!root) fail("No workspace.", "没有工作区。");
       const selected = d.proposals.filter(
         (p) => p.selected && p.status === "pending",
       );
@@ -847,50 +1009,15 @@ export class Service {
           "Workspace changed since generation. Regenerate proposals to preserve external edits.",
           "生成建议后工作区已变化，请重新生成以保留外部修改。",
         );
-      for (const p of selected) {
-        const target = await safeFile(root, p.path, true);
-        const existing = await fs.readFile(target).catch((e: any) => {
-          if (e.code === "ENOENT") return Buffer.alloc(0);
-          throw e;
-        });
-        if (decodeText(existing) !== p.original)
-          fail(
-            "A file changed. Regenerate proposals.",
-            "文件已变化，请重新生成建议。",
-          );
-      }
-      // Each applied item is checkpointed; a later failure leaves an explicit partial result.
-      for (const p of selected) {
-        const target = await safeFile(root, p.path, true);
-        // Recheck immediately before each write; never silently replace an external edit.
-        const stat = await fs.stat(target).catch((e: any) => {
-          if (e.code === "ENOENT") return undefined;
-          throw e;
-        });
-        const current = stat ? await fs.readFile(target) : Buffer.alloc(0);
-        if (decodeText(current) !== p.original || (p.existed === false && stat))
-          fail(
-            "A file changed. Regenerate proposals.",
-            "文件已变化，请重新生成建议。",
-          );
-        if (p.delete) await fs.unlink(target);
-        else {
-          await fs.mkdir(path.dirname(target), { recursive: true });
-          const temporary = target + ".reviewforge-" + randomUUID();
-          try {
-            await fs.writeFile(temporary, p.content, {
-              encoding: "utf8",
-              flag: "wx",
-              mode: stat?.mode ?? 0o644,
-            });
-            await fs.rename(temporary, target);
-          } finally {
-            await fs.rm(temporary, { force: true });
-          }
-        }
-        p.status = "applied";
-        this.save(d);
-      }
+      await validateLocalSnapshot(d.snapshot);
+      d.fixBackup = await prepareRecovery(
+        root,
+        selected,
+        path.join(this.store.directory, "recovery"),
+      );
+      this.save(d); // Durable recovery copy and pointer precede every repository write.
+      await applyRecovery(d.fixBackup);
+      for (const p of selected) p.status = "applied";
       if (d.workspace) {
         d.workspace.preview = undefined;
         d.workspace.approval = undefined;
@@ -899,6 +1026,148 @@ export class Service {
       d.followUpApproval = undefined;
       return this.save(d);
     });
+  }
+  async previewRecovery(id: string) {
+    const d = this.draft(id);
+    if (!d.fixBackup)
+      fail("No recovery copy is available.", "没有可用的恢复副本。");
+    return recoveryPreview(d.fixBackup);
+  }
+  async restoreFix(id: string, fingerprint: string) {
+    return this.operation("Restoring recovery copy", id, async () => {
+      const d = this.draft(id);
+      if (!d.fixBackup)
+        fail("No recovery copy is available.", "没有可用的恢复副本。");
+      await restoreRecovery(d.fixBackup, fingerprint);
+      for (const p of d.proposals) p.status = "pending";
+      d.proposalContext = undefined;
+      if (d.workspace) {
+        d.workspace.approval = undefined;
+        d.workspace.preview = undefined;
+      }
+      d.followUpApproval = undefined;
+      return this.save(d);
+    });
+  }
+  async workspaceFiles(id: string) {
+    const d = this.draft(id);
+    if (!d.workspace) fail("No workspace.", "没有工作区。");
+    return [
+      ...new Set(
+        (
+          await git(d.workspace.directory, [
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+          ])
+        )
+          .toString()
+          .split("\0")
+          .filter(Boolean),
+      ),
+    ];
+  }
+  async readWorkspaceFile(id: string, filename: string) {
+    const d = this.draft(id);
+    if (!d.workspace) fail("No workspace.", "没有工作区。");
+    const target = await safeFile(d.workspace.directory, filename, true);
+    let bytes: Buffer | undefined;
+    try {
+      bytes = await fs.readFile(target);
+    } catch (e: any) {
+      if (e.code !== "ENOENT") throw e;
+    }
+    const content = bytes ? decodeText(bytes) : "";
+    if (content === undefined)
+      fail("This file is not editable text.", "该文件不是可编辑文本。");
+    let original: string | undefined;
+    const head = await headOrEmpty(d.workspace.directory);
+    if (
+      head &&
+      (
+        await git(d.workspace.directory, [
+          "ls-tree",
+          "-z",
+          head,
+          "--",
+          filename,
+        ])
+      ).length
+    ) {
+      original = decodeText(
+        await readBlob(d.workspace.directory, head, filename),
+      );
+      if (original === undefined)
+        fail(
+          "The HEAD version is not editable text. Use an external editor for this file.",
+          "HEAD 版本不是可编辑文本，请使用外部编辑器处理此文件。",
+        );
+    }
+    return {
+      path: filename,
+      content,
+      original,
+      exists: bytes !== undefined,
+      fingerprint: digest({
+        bytes: bytes?.toString("base64"),
+        head: await headOrEmpty(d.workspace.directory),
+      }),
+    };
+  }
+  async writeWorkspaceFile(
+    id: string,
+    filename: string,
+    content: string,
+    expected: string,
+    discard = false,
+  ) {
+    return this.operation(
+      discard ? "Discarding file changes" : "Saving file",
+      id,
+      async () => {
+        const d = this.draft(id),
+          current = await this.readWorkspaceFile(id, filename);
+        if (current.fingerprint !== expected)
+          fail(
+            "The file changed externally. Reopen it before saving.",
+            "文件已在外部变化，请重新打开后再保存。",
+          );
+        const target = await safeFile(d.workspace!.directory, filename, true);
+        // Use the same durable recovery mechanism for manual edits and discards.
+        const next = discard
+          ? current.original
+          : current.exists
+            ? preserveEndings(current.content, content)
+            : content;
+        const proposal: Proposal = {
+          id: randomUUID(),
+          path: filename,
+          original: current.content,
+          existed: current.exists,
+          delete: next === undefined,
+          content: next ?? "",
+          reason: "Manual edit",
+          selected: true,
+          status: "pending",
+        };
+        d.fixBackup = await prepareRecovery(
+          d.workspace!.directory,
+          [proposal],
+          path.join(this.store.directory, "recovery"),
+        );
+        this.save(d);
+        await applyRecovery(d.fixBackup);
+        // Discard includes staged content for this path, while preserving all other index entries.
+        if (discard)
+          await git(d.workspace!.directory, ["reset", "HEAD", "--", filename]);
+        d.workspace!.preview = undefined;
+        d.workspace!.approval = undefined;
+        d.followUpApproval = undefined;
+        return this.save(d);
+      },
+    );
   }
   async syncWorkspace(id: string) {
     return this.operation("Synchronizing workspace", id, async () =>
@@ -940,8 +1209,33 @@ export class Service {
     w.expectedRemote = remote.head;
     w.preview = preview;
     w.approval = undefined;
-    w.pushedHead =
-      preview.head === remote.head && !preview.dirty ? preview.head : undefined;
+    const attempt = w.pushAttempt;
+    if (
+      attempt &&
+      attempt.repository === remote.headRepo &&
+      attempt.branch === remote.branch
+    ) {
+      if (
+        await api.containsCommit(remote.headRepo, attempt.commit, remote.head)
+      ) {
+        attempt.state = "pushed";
+        w.pushedHead = attempt.commit;
+      } else if (remote.head === attempt.expectedRemote) {
+        attempt.state = "ready";
+        w.pushedHead = undefined;
+      } else {
+        attempt.state = "uncertain";
+        w.pushedHead = undefined;
+      }
+    } else if (
+      await api.containsCommit(remote.headRepo, preview.head, remote.head)
+    )
+      w.pushedHead = preview.head;
+    else if (
+      w.pushedHead &&
+      !(await api.containsCommit(remote.headRepo, w.pushedHead, remote.head))
+    )
+      w.pushedHead = undefined;
     d.followUpApproval = undefined;
     return this.save(d);
   }
@@ -1023,7 +1317,15 @@ export class Service {
     return this.operation("Pushing approved code", id, async () => {
       const d = this.draft(id),
         w = await this.verifyCode(d);
-      if (!d.snapshot.pr) throw Error("No PR");
+      if (
+        w.pushAttempt &&
+        ["sending", "uncertain"].includes(w.pushAttempt.state)
+      )
+        fail(
+          "Verify the previous push using Synchronize before pushing again.",
+          "请先通过同步核实上次推送，再进行推送。",
+        );
+      if (!d.snapshot.pr) fail("No PR selected.", "未选择 PR。");
       if (w.preview!.dirty)
         fail(
           "Commit local changes, then preview and approve the commit before pushing.",
@@ -1046,23 +1348,45 @@ export class Service {
           "Amended history requires explicit approval for a lease-checked force push.",
           "修改过的提交历史需要明确批准使用带租约检查的强制推送。",
         );
-      const lease = `--force-with-lease=refs/heads/${remote.branch}:${remote.head}`;
-      await git(
-        w.directory,
-        [
-          "push",
-          lease,
-          `https://github.com/${remote.headRepo}.git`,
-          `${w.head}:refs/heads/${remote.branch}`,
-        ],
-        this.gitAuth(await this.secrets.read("github")),
-      );
-      const confirmed = await api.pr(remote);
-      if (confirmed.head !== w.head)
-        fail(
-          "Push result is not confirmed. Synchronize before replying.",
-          "尚未确认推送结果，请先同步再回复。",
+      const commit = w.head,
+        tree = await gitText(w.directory, ["rev-parse", `${commit}^{tree}`]);
+      w.pushAttempt = {
+        commit,
+        tree,
+        expectedRemote: remote.head,
+        repository: remote.headRepo,
+        branch: remote.branch,
+        state: "sending",
+      };
+      this.save(d); // Persist the exact approved commit before the network mutation.
+      try {
+        const lease = `--force-with-lease=refs/heads/${remote.branch}:${remote.head}`;
+        await git(
+          w.directory,
+          [
+            "push",
+            lease,
+            `https://github.com/${remote.headRepo}.git`,
+            `${commit}:refs/heads/${remote.branch}`,
+          ],
+          this.gitAuth(await this.secrets.read("github")),
         );
+        const confirmed = await api.pr(remote);
+        if (
+          confirmed.headRepo !== remote.headRepo ||
+          confirmed.branch !== remote.branch ||
+          !(await api.containsCommit(remote.headRepo, commit, confirmed.head))
+        )
+          fail(
+            "Push result is not confirmed. Synchronize before replying.",
+            "尚未确认推送结果，请先同步再回复。",
+          );
+        w.pushAttempt.state = "pushed";
+      } catch (error) {
+        w.pushAttempt.state = "uncertain";
+        this.save(d);
+        throw error;
+      }
       w.expectedRemote = w.head;
       w.pushedHead = w.head;
       d.followUpApproval = undefined;
@@ -1073,7 +1397,7 @@ export class Service {
     return this.operation("Running verification", id, async () => {
       const d = this.draft(id);
       const root = d.workspace?.directory ?? d.snapshot.repository;
-      if (!root) throw Error("No workspace");
+      if (!root) fail("No workspace.", "没有工作区。");
       const before = await workspaceDigest(root),
         head = await gitText(root, ["rev-parse", "HEAD"]);
       const result = await runVerification(root, executable, args);
@@ -1091,44 +1415,62 @@ export class Service {
       return result;
     });
   }
-  async generateReplies(id: string, instructions: string) {
+  async generateReplies(id: string, instructions: string, itemID?: string) {
     return this.operation("Drafting replies", id, async () => {
-      let d = this.draft(id);
-      if (!d.workspace)
-        fail(
-          "Prepare a workspace with real code changes first.",
-          "请先准备包含实际代码修改的工作区。",
-        );
+      const d = this.draft(id);
+      if (!d.workspace || !d.snapshot.pr)
+        fail("Prepare a PR workspace first.", "请先准备 PR 工作区。");
       const root = d.workspace.directory,
-        head = await gitText(root, ["rev-parse", "HEAD"]),
         before = await workspaceDigest(root),
-        diff = await workingDiff(root, d.workspace.originalHead);
+        api = await this.api();
+      const fresh = await api.pr(d.snapshot.pr);
+      const confirmed = d.workspace.pushedHead;
+      const pushed = Boolean(
+        confirmed &&
+        fresh.headRepo === d.snapshot.pr.headRepo &&
+        fresh.branch === d.snapshot.pr.branch &&
+        (await api.containsCommit(fresh.headRepo, confirmed, fresh.head)),
+      );
+      const commit = pushed ? confirmed! : await headOrEmpty(root);
+      const tree = pushed
+        ? await gitText(root, ["rev-parse", `${commit}^{tree}`])
+        : await workingTree(root);
+      const diff = await gitText(root, [
+        "diff",
+        "--no-ext-diff",
+        "--no-textconv",
+        d.workspace.originalHead,
+        tree,
+        "--",
+      ]);
       if (!diff.trim())
         fail(
           "No code changes are available to ground replies.",
           "没有可用于生成回复的实际代码修改。",
         );
-      const selected = d.feedback.filter((f) => f.selected && !f.replyAttempt);
+      const selected = d.feedback.filter(
+        (f) => !f.replyAttempt && (itemID ? f.id === itemID : f.selected),
+      );
       if (!selected.length)
         fail("Select feedback to draft replies.", "请选择需要生成回复的反馈。");
-      const fresh = await (await this.api()).pr(d.snapshot.pr!);
-      const dirty = Boolean(await gitText(root, ["status", "--porcelain"]));
-      const pushed = fresh.head === head && !dirty;
+      const candidates = new Map<
+        string,
+        NonNullable<Feedback["copilotDraft"]>
+      >();
       let n = 0;
       for (const item of selected) {
         this.update(item.path ?? item.author, n++, selected.length);
-        const replies = new Map<string, string>();
         await this.ai.run(
           await this.aiMessage("reply", {
             items: [{ id: item.id, comment: item.body, path: item.path }],
             actualDiff: diff,
-            head,
+            head: commit,
             publicationState: pushed
               ? "confirmed pushed"
               : "local changes, NOT pushed",
             verification:
-              d.workspace?.verification?.digest === before
-                ? d.workspace?.verification
+              d.workspace.verification?.digest === before
+                ? d.workspace.verification
                 : null,
             instructions,
           }),
@@ -1138,38 +1480,111 @@ export class Service {
               a.id !== item.id ||
               typeof a.body !== "string" ||
               !a.body.trim() ||
-              a.body.length > 60000
+              a.body.length > 60000 ||
+              (a.evidence !== undefined &&
+                (typeof a.evidence !== "string" || a.evidence.length > 60000))
             )
-              throw Error("Invalid reply target or content");
-            replies.set(a.id, a.body);
-            return "Local draft only; no publication.";
+              fail("Invalid reply target or content.", "回复目标或内容无效。");
+            candidates.set(item.id, {
+              body: a.body,
+              evidence:
+                a.evidence ||
+                (this.settings.language === "en"
+                  ? "Based on the captured diff. No additional verification evidence was supplied."
+                  : "基于捕获的差异；未提供额外验证依据。"),
+              commit,
+              tree,
+              createdAt: now(),
+            });
+            return "Local suggestion only. Human reply remains unchanged.";
           },
         );
-        if (!replies.has(item.id))
+        if (!candidates.has(item.id))
           fail(
             "Copilot did not return a reply for the selected comment.",
             "Copilot 未返回所选评论的回复。",
           );
-        if ((await workspaceDigest(root)) !== before)
-          fail(
-            "Code changed during drafting. Regenerate replies.",
-            "生成回复期间代码变化，请重新生成。",
-          );
-        d = this.store.get(id);
-        d.feedback.find((f) => f.id === item.id)!.reply = replies.get(item.id)!;
-        d.followUpApproval = undefined;
-        this.save(d);
       }
-      return d;
+      if ((await workspaceDigest(root)) !== before)
+        fail(
+          "Code changed during drafting. Regenerate replies.",
+          "生成回复期间代码变化，请重新生成。",
+        );
+      // All-or-nothing batch: AI suggestions never replace edited human replies.
+      for (const f of d.feedback)
+        if (candidates.has(f.id)) f.copilotDraft = candidates.get(f.id);
+      return this.save(d);
     });
+  }
+  async useReplyDraft(id: string, itemID: string, use: boolean) {
+    const d = this.draft(id),
+      f = d.feedback.find((f) => f.id === itemID);
+    if (!f?.copilotDraft || f.replyAttempt || !d.workspace)
+      fail("Reply suggestion is not available.", "回复建议不可用。");
+    if (use) {
+      const suggestion = f.copilotDraft,
+        root = d.workspace.directory;
+      const pushedTree = d.workspace.pushedHead
+        ? await gitText(root, ["rev-parse", `${d.workspace.pushedHead}^{tree}`])
+        : undefined;
+      if (
+        suggestion.tree !== pushedTree &&
+        suggestion.tree !== (await workingTree(root))
+      )
+        fail(
+          "Code changed. Generate a new reply suggestion.",
+          "代码已变化，请重新生成回复建议。",
+        );
+      if (
+        d.replyContext &&
+        d.replyContext.tree !== suggestion.tree &&
+        d.feedback.some(
+          (x) => x.id !== f.id && (x.replyAttempt || x.reply.trim()),
+        )
+      )
+        fail(
+          "Other replies refer to a different code snapshot. Clear or complete them before adopting this suggestion.",
+          "其他回复对应不同代码快照，请先清空或完成这些回复，再采纳此建议。",
+        );
+      f.reply = suggestion.body;
+      f.sendReply = true;
+      d.replyContext = {
+        commit: suggestion.commit,
+        tree: suggestion.tree,
+        diff: await gitText(root, [
+          "diff",
+          "--no-ext-diff",
+          "--no-textconv",
+          d.workspace.originalHead,
+          suggestion.tree,
+          "--",
+        ]),
+      };
+      d.followUpApproval = undefined;
+    }
+    f.copilotDraft = undefined;
+    return this.save(d);
   }
   async previewReplies(id: string) {
     return this.operation("Checking reply publication", id, async () => {
       const d = this.draft(id);
       await this.verifyPushed(d);
+      const user = await (await this.api()).currentUser();
+      if (
+        d.followUpAuthorID !== undefined &&
+        d.followUpAuthorID !== user.id &&
+        d.feedback.some((f) => f.replyAttempt)
+      )
+        fail(
+          "Use the account that started this reply publication.",
+          "请使用开始本次回复发布的账号。",
+        );
+      d.followUpAuthorID = user.id;
+      this.save(d);
       return {
         fingerprint: replyFingerprint(d),
-        head: d.workspace!.pushedHead,
+        head: d.replyContext!.commit,
+        context: d.replyContext,
         items: d.feedback.filter((f) => f.selected),
       };
     });
@@ -1180,26 +1595,95 @@ export class Service {
         "Prepare and push code before publishing replies.",
         "请先准备并推送代码，再发布回复。",
       );
-    const w = d.workspace;
-    const head = await gitText(w.directory, ["rev-parse", "HEAD"]);
-    const remote = await (await this.api()).pr(d.snapshot.pr);
+    const w = d.workspace,
+      api = await this.api(),
+      remote = await api.pr(d.snapshot.pr),
+      head = await headOrEmpty(w.directory);
     if (
-      remote.head !== head ||
-      (await gitText(w.directory, ["status", "--porcelain"])) ||
       remote.headRepo !== d.snapshot.pr.headRepo ||
       remote.branch !== d.snapshot.pr.branch
     )
       fail(
-        "Code is not confirmed pushed, or local changes remain. Synchronize and push first.",
-        "尚未确认代码已推送，或仍有本地修改，请先同步并推送。",
+        "PR source branch changed. Import it as a new review.",
+        "PR 来源分支已变化，请重新导入。",
       );
-    w.pushedHead = head;
+    const candidates = [
+      ...new Set([d.replyContext?.commit, w.pushedHead, head].filter(Boolean)),
+    ] as string[];
+    let confirmed: string | undefined,
+      tree = "";
+    for (const candidate of candidates) {
+      const candidateTree = await gitText(w.directory, [
+        "rev-parse",
+        `${candidate}^{tree}`,
+      ]);
+      if (d.replyContext && candidateTree !== d.replyContext.tree) continue;
+      if (await api.containsCommit(remote.headRepo, candidate, remote.head)) {
+        confirmed = candidate;
+        tree = candidateTree;
+        break;
+      }
+    }
+    if (!confirmed)
+      fail(
+        "Code is not confirmed pushed. Synchronize and verify the reviewed commit first.",
+        "尚未确认代码已推送，请先同步并核实已审查的提交。",
+      );
+    if (
+      !d.replyContext &&
+      !w.pushedHead &&
+      (await workingTree(w.directory)) !== tree
+    )
+      fail(
+        "Local edits are not part of the confirmed push. Generate replies for the pushed commit or synchronize first.",
+        "本地修改不属于已确认推送，请基于已推送提交生成回复或先同步。",
+      );
+    const diff = await gitText(w.directory, [
+      "diff",
+      "--no-ext-diff",
+      "--no-textconv",
+      w.originalHead,
+      tree,
+      "--",
+    ]);
+    d.replyContext = { commit: confirmed, tree, diff };
+    w.pushedHead = confirmed;
     const items = d.feedback.filter((f) => f.selected);
-    if (!items.length || items.some((f) => !f.reply.trim() && !f.resolve))
+    if (
+      !items.length ||
+      items.some(
+        (f) => !(f.sendReply !== false && f.reply.trim()) && !f.resolve,
+      )
+    )
       fail(
         "Select replies or resolve actions first.",
         "请先选择回复或标记解决操作。",
       );
+  }
+  private feedbackTarget(item: Feedback, fresh: Feedback[]) {
+    const target = fresh.find((f) => f.id === item.id);
+    if (
+      !target ||
+      target.threadID !== item.threadID ||
+      target.commentID !== item.commentID ||
+      target.url !== item.url ||
+      (target.sourceBody ?? target.body) !== (item.sourceBody ?? item.body)
+    )
+      fail(
+        "The original comment changed or disappeared. Refresh feedback and preview again.",
+        "原评论已变化或被删除，请刷新反馈后重新预览。",
+      );
+    return target;
+  }
+  private replyMatches(reply: any, item: Feedback, authorID: number) {
+    return (
+      reply?.user?.id === authorID &&
+      reply.body?.includes(item.replyAttempt?.marker) &&
+      Boolean(reply.html_url) &&
+      (item.threadID
+        ? reply.in_reply_to_id === item.commentID
+        : !reply.in_reply_to_id)
+    );
   }
   async approveReplies(id: string, fingerprint: string) {
     const d = this.draft(id);
@@ -1223,16 +1707,35 @@ export class Service {
         );
       const api = await this.api(),
         pr = d.snapshot.pr!;
+      const user = await api.currentUser();
+      if (user.id !== d.followUpAuthorID)
+        fail(
+          "GitHub account changed. Preview replies again with the correct account.",
+          "GitHub 账号已变化，请使用正确账号重新预览回复。",
+        );
       for (const item of d.feedback.filter((f) => f.selected)) {
+        if (
+          (item.sendReply === false ||
+            !item.reply.trim() ||
+            item.replyPosted) &&
+          (!item.resolve || item.resolveDone)
+        )
+          continue;
         await this.verifyPushed(d);
-        if (item.reply.trim() && !item.replyPosted) {
+        const target = this.feedbackTarget(item, await api.feedback(pr));
+        if (
+          item.sendReply !== false &&
+          item.reply.trim() &&
+          !item.replyPosted
+        ) {
           if (item.replyAttempt) {
             const found = await api.postedReply(
               pr,
               item,
               item.replyAttempt.marker,
+              item.replyAttempt.authorID,
             );
-            if (found) {
+            if (found && this.replyMatches(found, item, user.id)) {
               item.replyPosted = found.html_url;
               item.replyAttempt.state = "posted";
               this.save(d);
@@ -1243,7 +1746,12 @@ export class Service {
               );
           } else {
             const marker = `<!-- ReviewForge-reply:${id}:${crypto.randomUUID()} -->`;
-            item.replyAttempt = { marker, state: "sending", body: item.reply };
+            item.replyAttempt = {
+              marker,
+              state: "sending",
+              body: item.reply,
+              authorID: user.id,
+            };
             this.save(d);
             try {
               const posted = await api.reply(
@@ -1251,6 +1759,11 @@ export class Service {
                 item,
                 item.reply + "\n\n" + marker,
               );
+              if (!this.replyMatches(posted, item, user.id))
+                fail(
+                  "Reply result needs verification before retrying.",
+                  "回复结果需要核实后才能重试。",
+                );
               item.replyPosted = posted.html_url;
               item.replyAttempt.state = "posted";
               this.save(d);
@@ -1266,7 +1779,31 @@ export class Service {
         }
         if (item.resolve && item.threadID && !item.resolveDone) {
           await this.verifyPushed(d);
-          await api.resolve(item.threadID);
+          const latest = this.feedbackTarget(item, await api.feedback(pr));
+          if (!latest.resolved) {
+            item.resolveState = "sending";
+            this.save(d);
+            try {
+              const result = await api.resolve(item.threadID);
+              if (
+                result?.resolveReviewThread?.thread?.id !== item.threadID ||
+                result?.resolveReviewThread?.thread?.isResolved !== true
+              )
+                fail(
+                  "Thread resolution is not confirmed. Verify replies before retrying.",
+                  "尚未确认评论已解决，请先核实回复再重试。",
+                );
+            } catch (error) {
+              item.resolveState =
+                error instanceof GitHubRejected && error.definitelyRejected
+                  ? undefined
+                  : "uncertain";
+              d.followUpApproval = undefined;
+              this.save(d);
+              throw error;
+            }
+          }
+          item.resolveState = "done";
           item.resolved = true;
           item.resolveDone = true;
           this.save(d);
@@ -1279,15 +1816,21 @@ export class Service {
     return this.operation("Verifying replies", id, async () => {
       const d = this.draft(id),
         api = await this.api();
-      if (!d.snapshot.pr) throw Error("No PR");
+      if (!d.snapshot.pr) fail("No PR selected.", "未选择 PR。");
+      const authorID = (await api.currentUser()).id;
       for (const f of d.feedback) {
         if (f.replyAttempt && !f.replyPosted) {
           const match = await api.postedReply(
             d.snapshot.pr,
             f,
             f.replyAttempt.marker,
+            f.replyAttempt.authorID ?? authorID,
           );
-          if (match) {
+          if (
+            match &&
+            this.replyMatches(match, f, f.replyAttempt.authorID ?? authorID)
+          ) {
+            f.replyAttempt.authorID ??= authorID;
             f.replyPosted = match.html_url;
             f.replyAttempt.state = "posted";
           }
@@ -1298,6 +1841,7 @@ export class Service {
         if (fresh.find((x) => x.id === f.id)?.resolved) {
           f.resolved = true;
           f.resolveDone = true;
+          f.resolveState = "done";
         }
       return this.save(d);
     });

@@ -7,7 +7,8 @@ export class Copilot {
     message: any,
     onTool: (operation: string, args: any) => Promise<any>,
   ): Promise<any> {
-    if (this.current) throw Error("Copilot busy");
+    if (this.current)
+      throw new ForgeError("Copilot is busy.", "Copilot 正忙。");
     const child = utilityProcess.fork(
       path.join(__dirname, "copilot-worker.cjs"),
       [],

@@ -29,7 +29,7 @@ Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForg
 
 
 - **macOS Apple Silicon / Intel:** open the `.dmg` and drag **ReviewForge Desktop** to Applications. The `.zip` also contains the complete application.
-- **Windows x64:** run `ReviewForge-Desktop-2.0.3-Windows-x64.exe`. The public installer installs for the current user. A portable `.zip` is also available.
+- **Windows x64:** run `ReviewForge-Desktop-2.1.0-Windows-x64.exe`. The public installer installs for the current user. A portable `.zip` is also available.
 - Git and the platform-specific Copilot runtime are bundled. End users do not need Node.js, Python, Xcode, or a separate Git installation for the app’s repository operations. Project test commands still need their normal project toolchain.
 - This development distribution is not Developer ID notarized or Authenticode signed. Production distribution should be signed with the publisher’s certificates. Native platform CI checks are recorded in GitHub Actions. Windows installation and interactive UI acceptance still require manual validation.
 
@@ -37,7 +37,7 @@ Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForg
 
 1. **Install and launch:** download the matching installer from [Releases](https://github.com/ascube/ReviewForge/releases/latest), install it, then open ReviewForge Desktop.
 2. **Choose a language:** open **Settings → Language**. English is the first-launch default; Simplified Chinese is optional and your choice is saved.
-3. **Connect GitHub for PR workflows:** enter your authorized GitHub credential under **GitHub token**, then click **Check GitHub**. Local-only review does not require a GitHub publishing credential.
+3. **Connect GitHub for PR workflows:** enter your authorized **GitHub token**, or use an environment/active GitHub CLI credential. Click **Check GitHub** and confirm both the account and credential source. Local-only review does not require a GitHub publishing credential.
 4. **Connect Copilot:** enter an authorized Copilot-compatible token under **Copilot token**, or leave it empty to use an existing GitHub CLI login. A saved Copilot token takes priority. Click **Check Copilot / load models**.
 5. **Choose a model:** select a model returned by the connection check, or leave the default. Account entitlement and organization access rules still apply.
 6. **Set local preferences:** choose a data directory if desired. If you plan to commit from ReviewForge, enter your own **Commit author** name and email; these are your Git commit details, not the tool author's contact details.
@@ -134,8 +134,8 @@ Local snapshots are immutable. After applying a repair or editing externally, ca
 3. Prepare an isolated workspace using an existing local repository as the source, or clone the PR repository. The original source checkout stays unchanged. The isolated workspace is checked out at the PR source commit.
 4. Generate local fix proposals with Copilot, or **Open workspace** and edit using another editor. Preview/edit and apply proposals explicitly. Run a trusted verification executable with a JSON argument array; no shell is implicitly invoked.
 5. **Synchronize / refresh diff** detects external commits, amendments and externally pushed changes. Preview and approve the exact code state. Commit locally if necessary, then synchronize/preview/approve the resulting commit before push. Amended history requires the explicit rewrite checkbox. All pushes use an expected-remote-SHA lease; remote changes invalidate the operation.
-6. Generate reply drafts **before or after push**, grounded in the selected comment and actual local diff. Preview and edit each Markdown draft. An unpushed draft cannot be published or resolved.
-7. Once the PR source HEAD is confirmed equal to the clean local HEAD, preview the reply/resolve plan, approve it, then publish. Reply and resolve progress is checkpointed per item. **Verify previous replies** reconciles uncertain results instead of blindly posting duplicates.
+6. Generate reply suggestions **before or after push**, grounded in the selected comment and actual code diff. Inspect **Evidence and limitations**, then explicitly **Use draft** or **Dismiss suggestion**; existing human replies stay unchanged. Preview and edit each adopted Markdown draft. An unpushed draft cannot be published or resolved.
+7. Once the reviewed commit is confirmed contained in the PR source branch, inspect that exact commit/diff, preview the reply/resolve plan, approve it, then publish. Later remote commits and unrelated local edits remain separate. Reply and resolve progress is checkpointed per item. **Verify replies** reconciles uncertain results instead of blindly posting duplicates.
 
 Code approval, review publication approval and reply/resolve approval are separate. Editing content or changing code invalidates the relevant approval.
 
@@ -176,3 +176,7 @@ The cross-build script creates `.cache/windows-stage`, installs Windows-specific
 For macOS signing, configure `APPLE_SIGN_IDENTITY` and optionally `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`. Native Windows Forge signing accepts `WINDOWS_CERTIFICATE`/`WINDOWS_CERTIFICATE_PASSWORD`; the NSIS script uses electron-builder’s `CSC_LINK`/`CSC_KEY_PASSWORD`. No signing credentials are included in this project.
 
 See [VALIDATION.md](VALIDATION.md) for the actual validation performed and platform limits.
+
+## Feature parity and recovery
+
+Version 2.1 completes the identified Swift-to-desktop workflow gaps, including recovery copies, interrupted-push reconciliation, publication identity checks, per-item reply suggestions, in-app workspace editing and complete Markdown reports. See the [feature parity checklist](docs/FEATURE_PARITY.md) for the implemented behavior and validation boundaries. Old Swift data migration and iPad support are outside this Windows/macOS release.

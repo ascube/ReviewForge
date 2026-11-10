@@ -1120,3 +1120,25 @@ footer button {
     padding: 7px 9px;
   }
 }
+
+.workspaceFiles select {
+  width: 100%;
+  min-width: 0;
+}
+.suggestion {
+  border: 1px solid var(--accent, #55d6b7);
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 8px;
+}
+.codeBlock {
+  position: relative;
+}
+.codeBlock > button {
+  display: block;
+  margin-left: auto;
+  font-size: 12px;
+}
+.replyCard .row {
+  flex-wrap: wrap;
+}

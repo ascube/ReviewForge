@@ -1,5 +1,17 @@
 # Validation — 2026-11-10
 
+## 2.1.0 feature parity
+
+- Compared the original Swift implementation against Desktop 2.0.3 and implemented the identified gaps; see [feature parity](docs/FEATURE_PARITY.md).
+- Automated regression coverage includes stale-snapshot rejection, multi-file rollback/recovery, pending/self-authored review protection, author/state reconciliation, retained human replies, remote-descendant confirmation, target revalidation, workspace editor/EOL/discard, verified data copying, empty/shallow repositories and retained uncertain records.
+- Live Copilot validation against a newly created synthetic repository returned 8 models, reviewed one file and found one issue, then generated a reply suggestion with evidence. The existing human reply remained unchanged until explicit local adoption. The pre-push publication gate rejected publication. The fixture GitHub transport prohibits requests/writes.
+- An isolated native macOS app launched in English under a Chinese locale. Actual UI checks exercised suggestion adoption, the workspace editor, complete report contents, Chinese language selection and a 1000×700 layout. No GitHub publication or resolution occurred.
+- `npm run check` passed: typecheck, all 47 automated tests and production build.
+- The persisted Chinese selection survived restart under an English locale. Native UI file save preserved CRLF; previewed recovery restored the exact original bytes. No UI errors were present.
+- Native platform packaging results are recorded below once verified.
+
+## Historical validation (2.0.x)
+
 ## Automated
 
 - `npm run typecheck`: passed.

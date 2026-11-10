@@ -65,7 +65,7 @@ export async function safeFile(
       if (s.isSymbolicLink())
         fail("Symbolic links are not editable.", "不允许编辑符号链接。");
       if (i < parts.length - 1 && !s.isDirectory())
-        throw Error("Not a directory");
+        fail("The parent path is not a directory.", "父路径不是目录。");
     } catch (e: any) {
       if (e.code === "ENOENT" && allowMissing) return path.join(real, ...parts);
       throw e;

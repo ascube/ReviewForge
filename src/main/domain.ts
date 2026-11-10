@@ -53,7 +53,13 @@ export function validateFinding(d: Draft, raw: unknown): Finding {
       "Suggestions use a separate category with P3 storage priority.",
       "建议使用独立分类，并以 P3 存储。",
     );
-  return { ...f, id: id(), origin: "copilot", decision: "pending" };
+  return {
+    ...f,
+    originalBody: f.body,
+    id: id(),
+    origin: "copilot",
+    decision: "pending",
+  };
 }
 export function reviewPayload(d: Draft) {
   return {
@@ -121,9 +127,18 @@ export function newDraft(snapshot: Draft["snapshot"]): Draft {
 }
 export const replyFingerprint = (d: Draft) =>
   digest({
-    head: d.workspace?.pushedHead,
-    preview: d.workspace?.preview?.digest,
+    context: d.replyContext,
+    authorID: d.followUpAuthorID,
     items: d.feedback
       .filter((f) => f.selected)
-      .map((f) => ({ id: f.id, reply: f.reply, resolve: f.resolve })),
+      .map((f) => ({
+        id: f.id,
+        threadID: f.threadID,
+        commentID: f.commentID,
+        body: f.body,
+        url: f.url,
+        reply: f.reply,
+        sendReply: f.sendReply !== false,
+        resolve: f.resolve,
+      })),
   });

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0 — 2026-11-10
+
+- Complete the identified Swift workflow parity gaps: original-snapshot validation, durable fix recovery copies and rollback, workspace file editing/discard, and preserved original AI findings.
+- Persist and reconcile exact push attempts, including network interruption followed by external amend; verify contained commits rather than requiring identical remote/local tips.
+- Keep generated reply suggestions separate from edited human replies, with per-item generation, evidence, explicit adoption/dismissal, and independent send/resolve choices.
+- Recheck publication identity, existing pending reviews, original feedback targets, returned review/reply identity and resolved state.
+- Restore GitHub credential fallback with visible account/source, clear stale models, and improve bilingual Copilot diagnostics.
+- Restore complete Markdown local reports and extended Markdown document recognition; support unborn repositories and correctly reject missing shallow-clone parent history.
+- Add offline demonstration, branch refresh on focus, whitespace/commit identity previews, and verified data-folder copying with recovery-path updates.
+- Preserve English-first launch, persistent Simplified Chinese selection, and all explicit approval gates.
+
 ## 2.0.3 — 2026-11-10
 
 - Explain missing GitHub tokens and distinguish anonymous 404 responses from inaccessible resources when a credential is configured. Diagnostics omit query values, response bodies and credentials.

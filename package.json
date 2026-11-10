@@ -1,7 +1,7 @@
 {
   "name": "reviewforge-desktop",
   "productName": "ReviewForge Desktop",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "private": true,
   "description": "Local-first code review and feedback resolution with GitHub Copilot",
   "author": {

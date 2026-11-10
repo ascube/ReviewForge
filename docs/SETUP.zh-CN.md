@@ -26,7 +26,7 @@
 
 直接在 **GitHub token** 输入凭据，点击 **Check GitHub／检查 GitHub**。应用会先保存再检查，确认返回的是预期账号。此凭据用于仓库和 API 操作，不会自动变成 Copilot 授权。只做本地审查可跳过这一步。
 
-PR 请求使用已保存的 **GitHub token**，不会回退到 GitHub CLI 或 Copilot 登录。**检查 GitHub** 显示 **GitHub 账号 · 用户名**；这仅验证 token 身份，并不保证可访问每个私有仓库。导入时的 404 可能表示链接不正确或访问权限不足，请检查 token 的仓库权限及组织 SSO 要求。
+PR 请求依次使用已保存的 **GitHub token**、`GH_TOKEN`/`GITHUB_TOKEN`、当前 GitHub CLI 凭据。**检查 GitHub** 显示 **GitHub 账号 · 用户名 · 凭据来源**。已保存 token 优先，若需切换来源请明确清除它。Copilot 认证仍独立配置；这仅验证 token 身份，并不保证可访问每个私有仓库。导入时的 404 可能表示链接不正确或访问权限不足，请检查 token 的仓库权限及组织 SSO 要求。
 
 ## 4. 配置 Copilot
 

@@ -61,7 +61,23 @@ class FakeGitHub extends GitHub {
   resolved: string[] = [];
   timeout = false;
   constructor() {
-    super("");
+    super("", async () => {
+      throw Error("Unexpected network in tests");
+    });
+  }
+  feedbackProvider: () => any[] = () => [];
+  override async currentUser() {
+    return { id: 42, login: "fixture" };
+  }
+  override async containsCommit(
+    _repository: string,
+    commit: string,
+    head: string,
+  ) {
+    return commit === head;
+  }
+  override async feedback() {
+    return this.feedbackProvider();
   }
   override async pr() {
     return this.current;
@@ -69,6 +85,8 @@ class FakeGitHub extends GitHub {
   override async createReview(_p: PR, payload: any) {
     this.posts.push({
       id: 1,
+      state: "COMMENTED",
+      user: { id: 42 },
       body: payload.body,
       commit_id: payload.commit_id,
       html_url: "https://github.com/review/1",
@@ -81,6 +99,7 @@ class FakeGitHub extends GitHub {
   }
   override async reply(_p: PR, f: any, body: string) {
     const r = {
+      user: { id: 42 },
       body,
       html_url: "https://github.com/comment/" + this.replies.length,
       in_reply_to_id: f.commentID,
@@ -96,7 +115,7 @@ class FakeGitHub extends GitHub {
   }
   override async resolve(id: string) {
     this.resolved.push(id);
-    return {};
+    return { resolveReviewThread: { thread: { id, isResolved: true } } };
   }
 }
 async function setup(ai: AI) {
@@ -114,6 +133,7 @@ async function setup(ai: AI) {
     copilotConfigured: false,
   };
   const remote = new FakeGitHub();
+  remote.feedbackProvider = () => store.list().flatMap((d) => d.feedback);
   const service = new Service(
     store,
     settings,
@@ -405,6 +425,8 @@ test("reply drafts before push stay local; externally pushed commit allows previ
     f.store.save(d);
     await fs.writeFile(path.join(root, "a.ts"), "const a = 2;\r\n");
     await f.service.generateReplies(d.id, "");
+    assert.equal(f.store.get(d.id).feedback[0].reply, "");
+    await f.service.useReplyDraft(d.id, "thread", true);
     assert.equal(publicationState, "local changes, NOT pushed");
     assert.equal(f.remote.replies.length, 0);
     await assert.rejects(f.service.previewReplies(d.id));
@@ -615,6 +637,73 @@ test("real Git pushes use an explicit lease, preserve approved amend history, an
     };
     await assert.rejects(f.service.push(d.id, false), /stale info|rejected/);
     assert.equal((await current()).head, original);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a push interrupted after the remote write is recovered by its original commit after external amend", async () => {
+  const f = await setup(noAI);
+  try {
+    const root = await repository(f.root),
+      bare = path.join(f.root, "remote.git");
+    const original = await gitText(root, ["rev-parse", "HEAD"]);
+    await git(root, ["clone", "--bare", root, bare]);
+    await git(root, [
+      "config",
+      `url.${pathToFileURL(bare).href}.insteadOf`,
+      "https://github.com/owner/repo.git",
+    ]);
+    const d = draft();
+    d.workspace = {
+      directory: root,
+      head: original,
+      originalHead: original,
+      expectedRemote: original,
+    };
+    f.store.save(d);
+    const current = async () => ({
+      ...pr,
+      head: await gitText(bare, ["rev-parse", "refs/heads/feature"]),
+    });
+    f.remote.pr = current;
+    f.remote.containsCommit = async (_r, commit, head) => {
+      try {
+        await git(root, ["merge-base", "--is-ancestor", commit, head]);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    await fs.writeFile(path.join(root, "a.ts"), "const a = 2;\r\n");
+    await git(root, ["commit", "-am", "fix"]);
+    const pushed = await gitText(root, ["rev-parse", "HEAD"]);
+    await f.service.syncWorkspace(d.id);
+    f.service.approveCode(d.id, digest(f.store.get(d.id).workspace!.preview));
+    let reads = 0;
+    f.remote.pr = async () => {
+      if (++reads === 2) throw Error("connection lost after push");
+      return current();
+    };
+    await assert.rejects(f.service.push(d.id, false), /connection lost/);
+    let saved = f.store.get(d.id);
+    assert.equal(saved.workspace!.pushAttempt!.state, "uncertain");
+    assert.equal(saved.workspace!.pushAttempt!.commit, pushed);
+    assert.equal((await current()).head, pushed);
+    assert.throws(() => f.store.delete(d.id));
+    await assert.rejects(
+      f.service.push(d.id, false),
+      /Verify the previous push/,
+    );
+    await git(root, ["commit", "--amend", "-m", "new external amend"]);
+    const amended = await gitText(root, ["rev-parse", "HEAD"]);
+    f.remote.pr = current;
+    await f.service.syncWorkspace(d.id);
+    saved = f.store.get(d.id);
+    assert.equal(saved.workspace!.head, amended);
+    assert.equal(saved.workspace!.pushAttempt!.state, "pushed");
+    assert.equal(saved.workspace!.pushedHead, pushed);
+    assert.equal(saved.workspace!.pushAttempt!.commit, pushed);
   } finally {
     await f.close();
   }

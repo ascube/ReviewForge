@@ -118,8 +118,8 @@ const upstream = [
     "https://codeload.github.com/desktop/dugite-native/tar.gz/a44aeca",
   ],
 ];
-// The source archives are pinned to the exact embedded Git revision/recipe used by 2.0.3 (unchanged dependency lockfile).
-if (version !== "2.0.3")
+// The source archives are pinned to the exact embedded Git revision/recipe used by 2.0.3 and 2.1.0 (unchanged dependency versions).
+if (!["2.0.3", "2.1.0"].includes(version))
   throw Error(
     "Update upstream source revisions for this release before running",
   );
@@ -158,7 +158,7 @@ const release = {
   buildRun: process.env.BUILD_RUN,
   builtAt: new Date().toISOString(),
   publisherSigned: false,
-  testsPassedPerPlatform: 27,
+  testsPassedPerPlatform: version === "2.1.0" ? 47 : 27,
   nativeRuntimeVerified: ["macOS arm64", "macOS x64", "Windows x64"],
   interactiveUIVerified: ["macOS arm64"],
   artifacts,

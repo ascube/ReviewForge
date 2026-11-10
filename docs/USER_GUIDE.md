@@ -44,7 +44,7 @@ GitHub API patch limits can restrict coverage. A review supports at most 50 incl
 2. Choose scope: **Uncommitted changes**, **Branch changes**, **Latest commit**, or **Whole repository**. Branch comparison chooses an existing local ref from a list; no implicit fetch occurs.
 3. Optionally restrict to a subfolder, then **Capture snapshot**. Snapshots are frozen; recapture after subsequent edits.
 4. Analyze and inspect the categorized report. Files matching ignore rules are excluded; binary/non-UTF-8 files, submodules, symlinks and unreadable files are shown as unsupported/unavailable. Large files are reviewed in parts, without a 160-file or 500-KB aggregate exclusion.
-5. **Fix all findings** creates proposals for non-excluded findings. Preview and edit them before **Apply selected changes**. Applying is the only step that writes proposed changes. The app checks original contents and preserves line-ending conventions.
+5. **Fix all findings** creates proposals for non-excluded findings. Preview and edit them before **Apply selected changes**. Applying is the only step that writes proposed changes. The app rejects stale review snapshots, preserves line-ending conventions, and saves a separate recovery copy before writing. A failed multi-file apply attempts to restore the original batch. **Preview recovery copy → Confirm restore** can undo the apply while refusing to overwrite later edits. **Discard fix draft** removes proposals while retaining applied files and recovery data.
 6. Run your project's tests and inspect the resulting Git diff. Capture a new snapshot for another review.
 
 ![Local review example](screenshots/local-review.png)
@@ -53,17 +53,18 @@ GitHub API patch limits can restrict coverage. A review supports at most 50 incl
 
 1. Open **Address Feedback** and import/open PR feedback. Resolved/outdated threads are labeled; **Hide resolved** hides them even if they were selected.
 2. Select comments and prepare an isolated workspace from a local repository or by cloning. The source checkout is not the managed workspace.
-3. Ask Copilot for local proposals, or open the workspace in your preferred editor. Preview/edit/apply proposals explicitly.
+3. Ask Copilot for local proposals, use **Edit workspace file** (including Markdown preview/raw copy and explicitly confirmed per-file discard), or open the workspace in your preferred editor. Preview/edit/apply proposals explicitly.
 4. Run verification with a trusted executable and JSON argument array. Project toolchains must already be installed; the app does not silently run shell commands from comments.
 5. Synchronize after external commit/amend/push. ReviewForge compares local HEAD with the PR source branch. Re-preview and approve after any code/commit change. Rewritten history requires explicit approval and an expected-remote-SHA push lease.
-6. Generate replies before or after push, based on each selected comment and actual code changes. Edit every draft; do not describe checks you have not run.
-7. Publish replies/resolve only after ReviewForge confirms the clean local HEAD is on the PR source branch. Preview the reply/resolve plan, approve it, and publish. Uncertain attempts require **Verify previous replies** before another attempt.
+6. Generate replies before or after push, based on selected comments and actual code changes. Copilot suggestions and their **Evidence and limitations** are separate from your edited reply. Use **Draft this reply with Copilot** for one item, then **Use draft** or **Dismiss suggestion**. Generation never overwrites your reply. Edit/save the adopted text; choose **Send reply** and/or resolve independently.
+7. Publish replies/resolve only after ReviewForge confirms the reviewed commit is contained in the PR source branch. Later remote commits and unrelated local work do not invalidate that confirmed commit. The preview shows the exact commit and diff; it does not include later uncommitted work. Approve the reply/resolve plan separately. Original comments and account identity are checked again before publication. Use **Verify replies** for uncertain replies/resolutions.
+8. If a push was interrupted, **Synchronize / refresh diff** reconciles its saved commit and expected remote head. It can recognize a successful push even after a later local amend. Re-preview and approve before retrying a push that is confirmed not to have occurred.
 
 ![Feedback example](screenshots/address-feedback.png)
 
 ## Data, privacy and recovery
 
-**Settings → Local data** shows the actual data directory. Change it to copy drafts and managed workspaces to a new location; the original remains. Archive completed work, restore from Archived, and export Markdown reports. Deleting a draft does not remove your original source repository.
+**Settings → Local data** shows the actual data directory. Change it to copy drafts and managed workspaces to a new location; the original remains. Archive completed work, restore from Archived, and export complete local Markdown reports (summary, file assessments, findings/decisions and omissions). Remote drafts export as JSON. Deleting a draft does not remove your original source repository.
 
 Code and selected context go to GitHub Copilot only when you request AI work. ReviewForge is a personal desktop client, not a hosted code storage service. Follow your repository owner's rules for sharing code with AI. Markdown preview blocks remote image loading and raw HTML execution.
 

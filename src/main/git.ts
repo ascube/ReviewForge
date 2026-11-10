@@ -65,7 +65,8 @@ export async function git(
         err
           ? reject(
               new Error(
-                redact(stderr.toString()).slice(0, 4000) || err.message,
+                redact(out.toString() + stderr.toString()).slice(0, 4000) ||
+                  err.message,
               ),
             )
           : resolve(out),
@@ -83,14 +84,16 @@ export async function repoInfo(directory: string): Promise<RepoInfo> {
   const root = await fs.realpath(
     await gitText(directory, ["rev-parse", "--show-toplevel"]),
   );
-  const head = await gitText(root, ["rev-parse", "HEAD"]);
+  const head = await headOrEmpty(root);
   const branch =
     (await gitText(root, ["branch", "--show-current"])) || "(detached HEAD)";
   return {
     directory: root,
     head,
     branch,
-    subject: await gitText(root, ["show", "-s", "--format=%s", "HEAD"]),
+    subject: head
+      ? await gitText(root, ["show", "-s", "--format=%s", "HEAD"])
+      : "",
     branches: (
       await gitText(root, [
         "for-each-ref",
@@ -103,7 +106,15 @@ export async function repoInfo(directory: string): Promise<RepoInfo> {
       .filter((v) => v && !v.endsWith("/HEAD")),
   };
 }
-const emptyTree = async (root: string) =>
+export const headOrEmpty = async (root: string) => {
+  try {
+    return await gitText(root, ["rev-parse", "--verify", "HEAD"]);
+  } catch {
+    await git(root, ["symbolic-ref", "HEAD"]);
+    return "";
+  }
+};
+export const emptyTree = async (root: string) =>
   gitText(root, ["hash-object", "-t", "tree", "--stdin"]);
 export function fileSnapshot(
   filename: string,
@@ -144,7 +155,7 @@ async function blobOrEmpty(root: string, ref: string, filename: string) {
   } catch {
     const exists = await git(root, ["ls-tree", "-z", ref, "--", filename]);
     if (!exists.length) return Buffer.alloc(0);
-    throw Error(`Cannot read ${filename}`);
+    fail(`Cannot read ${filename}`, `无法读取 ${filename}`);
   }
 }
 export async function captureLocal(
@@ -160,13 +171,28 @@ export async function captureLocal(
     subfolder = subfolder.replace(/\/$/, "");
     relativePath(subfolder);
   }
-  let base = info.head;
+  if (!info.head && (scope === "latest" || scope === "branch"))
+    fail(
+      "This repository has no commits. Choose Uncommitted changes or Whole repository.",
+      "仓库尚无提交，请选择未提交修改或整个仓库。",
+    );
+  let base = info.head || (await emptyTree(root));
   if (scope === "latest") {
-    try {
-      base = await gitText(root, ["rev-parse", `${info.head}^`]);
-    } catch {
-      base = await emptyTree(root);
-    }
+    const commit = await gitText(root, ["cat-file", "-p", info.head]);
+    const parent = commit
+      .split("\n\n", 1)[0]
+      .match(/^parent ([a-f0-9]+)$/m)?.[1];
+    if (parent) {
+      try {
+        await git(root, ["cat-file", "-e", `${parent}^{commit}`]);
+      } catch {
+        fail(
+          "The parent commit is unavailable in this shallow repository. Fetch history before reviewing the latest commit.",
+          "浅克隆仓库缺少父提交，请获取历史后再审查最新提交。",
+        );
+      }
+      base = parent;
+    } else base = await emptyTree(root);
   }
   if (scope === "branch") {
     if (!info.branches.includes(baseRef))
@@ -210,10 +236,12 @@ export async function captureLocal(
     const useDisk = scope === "working" || scope === "repository";
     let before = Buffer.alloc(0) as Buffer,
       after = Buffer.alloc(0) as Buffer;
+    let beforeExists = false,
+      afterExists = false;
     try {
       const entry = await gitText(root, [
         "ls-tree",
-        useDisk ? info.head : info.head,
+        info.head || base,
         "--",
         filename,
       ]);
@@ -231,25 +259,38 @@ export async function captureLocal(
         );
         continue;
       }
-      if (scope !== "repository")
+      if (scope !== "repository") {
+        beforeExists = Boolean(
+          (await git(root, ["ls-tree", "-z", base, "--", filename])).length,
+        );
         before = await blobOrEmpty(root, base, filename);
+      }
       if (useDisk) {
         try {
           const p = await safeFile(root, filename);
           const s = await fs.lstat(p);
           if (!s.isFile()) continue;
           after = await fs.readFile(p);
+          afterExists = true;
         } catch (e: any) {
           if (e.code !== "ENOENT") throw e;
         }
-      } else after = await blobOrEmpty(root, info.head, filename);
-      if (scope !== "repository" && before.equals(after)) continue;
+      } else {
+        after = await blobOrEmpty(root, info.head, filename);
+        afterExists = Boolean(entry);
+      }
+      if (
+        scope !== "repository" &&
+        before.equals(after) &&
+        beforeExists === afterExists
+      )
+        continue;
       files.push(
         fileSnapshot(
           filename,
           before,
           after,
-          !before.length ? "added" : !after.length ? "removed" : "modified",
+          !beforeExists ? "added" : !afterExists ? "removed" : "modified",
         ),
       );
     } catch (e) {
@@ -342,7 +383,8 @@ export async function workspaceDigest(root: string): Promise<string> {
     }
   }
   return digest({
-    head: await gitText(root, ["rev-parse", "HEAD"]),
+    head: await headOrEmpty(root),
+    branch: await gitText(root, ["branch", "--show-current"]),
     files: records,
   });
 }
@@ -385,7 +427,17 @@ export async function codePreview(
     rewrite = true;
   }
   const dirty = Boolean(await gitText(root, ["status", "--porcelain"]));
+  const tree = await workingTree(root);
+  let whitespaceReport = "";
+  try {
+    await git(root, ["diff", "--check", original, tree, "--"]);
+  } catch (error) {
+    whitespaceReport = String(error);
+  }
   return {
+    whitespaceReport,
+    commitMessage: await gitText(root, ["show", "-s", "--format=%B", head]),
+    author: await gitText(root, ["show", "-s", "--format=%an <%ae>", head]),
     head,
     remote,
     digest: await workspaceDigest(root),
@@ -448,9 +500,45 @@ export async function withTemporaryIndex<T>(
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "reviewforge-index-"));
   try {
     const env = { GIT_INDEX_FILE: path.join(dir, "index") };
-    await git(root, ["read-tree", "HEAD"], env);
+    await git(
+      root,
+      ["read-tree", (await headOrEmpty(root)) || (await emptyTree(root))],
+      env,
+    );
     return await operation(env);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
+}
+
+export async function validateLocalSnapshot(snapshot: Snapshot) {
+  if (snapshot.kind !== "local" || !snapshot.repository) return;
+  const root = snapshot.repository,
+    info = await repoInfo(root);
+  const stale = () =>
+    fail(
+      "The repository changed after review. Capture and review a new snapshot before fixing.",
+      "仓库在审查后发生变化，请重新捕获并审查快照后再修复。",
+    );
+  if (info.head !== snapshot.head || info.branch !== snapshot.branch) stale();
+  for (const file of snapshot.files.filter((f) => !f.omission)) {
+    let data: Buffer | undefined;
+    try {
+      data = await fs.readFile(await safeFile(root, file.path));
+    } catch (e: any) {
+      if (e.code !== "ENOENT") throw e;
+    }
+    if (
+      file.status === "removed"
+        ? data !== undefined
+        : !data || decodeText(data) !== file.after
+    )
+      stale();
+  }
+}
+export async function workingTree(root: string) {
+  return withTemporaryIndex(root, async (env) => {
+    await git(root, ["add", "--all", "--", "."], env);
+    return gitText(root, ["write-tree"], env);
+  });
 }
