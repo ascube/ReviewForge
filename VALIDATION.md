@@ -9,7 +9,9 @@
 - `npm run check` passed: typecheck, all 47 automated tests and production build.
 - The persisted Chinese selection survived restart under an English locale. Native UI file save preserved CRLF; previewed recovery restored the exact original bytes. No UI errors were present.
 - The initial 2.1.0 Windows run exposed a forward-slash-only path match in the new fault-injection test. The test now uses `path.basename`, ensuring rollback is exercised on Windows as well. 2.1.0 remained unpublished; 2.1.1 includes the test fix.
-- Native platform packaging results are recorded below once verified.
+- Final 2.1.1 macOS ARM64 DMG and ZIP passed integrity checks. The packaged application returned `ok: true` for bundled Git 2.56.0, SQLite and the native Copilot runtime; its main, preload and Copilot worker bundles match the validated production build. The bilingual UI, restart persistence, CRLF save and recovery checks were repeated against this final package.
+- [Native build run 42925193258](https://github.com/ascube/ReviewForge/actions/runs/42925193258) built tag `v2.1.1` (`47556c2c87cbf35808acc3f141c9326c1ed4b133`) on macOS ARM64, macOS Intel x64 and Windows x64. Each platform passed typecheck, all 47 tests, production build, installer packaging and the packaged Git/SQLite/native Copilot smoke test.
+- Interactive UI verification was performed on macOS ARM64; Windows and Intel macOS were verified through native CI rather than a manual installation session. GitHub write flows remain tested with mocked transports and local temporary repositories.
 
 ## Historical validation (2.0.x)
 

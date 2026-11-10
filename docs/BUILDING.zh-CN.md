@@ -23,7 +23,7 @@ git clone https://github.com/ascube/ReviewForge.git
 cd ReviewForge
 ```
 
-若复现指定版本，可在安装前执行 `git checkout v2.0.3`。`main` 包含最新文档和维护改动；Release 的 Source ZIP 也提供应用源码，来源记录见发行元数据。
+若复现指定版本，可在安装前执行 `git checkout v2.1.1`。`main` 包含最新文档和维护改动；Release 的 Source ZIP 也提供应用源码，来源记录见发行元数据。
 
 ## 3. 安装锁定依赖
 
