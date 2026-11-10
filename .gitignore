@@ -1,0 +1,21 @@
+node_modules/
+.cache/
+dist/
+out/
+.test-data/
+*.log
+.DS_Store
+
+# Local credentials, review data and signing material
+.env
+.env.*
+!.env.example
+*.vault
+*.sqlite
+*.sqlite-*
+*.db
+*.pem
+*.p12
+*.pfx
+*.key
+coverage/

@@ -1,0 +1,41 @@
+name: Build ReviewForge Desktop
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+          - os: windows-2025
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run make -- --arch=${{ matrix.arch }}
+      - name: Smoke-test packaged Git, SQLite and native Copilot runtime
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            "out/ReviewForge Desktop-win32-${{ matrix.arch }}/ReviewForgeDesktop.exe" --smoke-test
+          else
+            "out/ReviewForge Desktop-darwin-${{ matrix.arch }}/ReviewForge Desktop.app/Contents/MacOS/ReviewForgeDesktop" --smoke-test
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReviewForge-${{ matrix.os }}-${{ matrix.arch }}
+          path: out/make/**
