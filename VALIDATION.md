@@ -1,6 +1,6 @@
 # Validation — 2026-11-10
 
-## 2.1.0 feature parity
+## 2.1.1 feature parity
 
 - Compared the original Swift implementation against Desktop 2.0.3 and implemented the identified gaps; see [feature parity](docs/FEATURE_PARITY.md).
 - Automated regression coverage includes stale-snapshot rejection, multi-file rollback/recovery, pending/self-authored review protection, author/state reconciliation, retained human replies, remote-descendant confirmation, target revalidation, workspace editor/EOL/discard, verified data copying, empty/shallow repositories and retained uncertain records.
@@ -8,6 +8,7 @@
 - An isolated native macOS app launched in English under a Chinese locale. Actual UI checks exercised suggestion adoption, the workspace editor, complete report contents, Chinese language selection and a 1000×700 layout. No GitHub publication or resolution occurred.
 - `npm run check` passed: typecheck, all 47 automated tests and production build.
 - The persisted Chinese selection survived restart under an English locale. Native UI file save preserved CRLF; previewed recovery restored the exact original bytes. No UI errors were present.
+- The initial 2.1.0 Windows run exposed a forward-slash-only path match in the new fault-injection test. The test now uses `path.basename`, ensuring rollback is exercised on Windows as well. 2.1.0 remained unpublished; 2.1.1 includes the test fix.
 - Native platform packaging results are recorded below once verified.
 
 ## Historical validation (2.0.x)

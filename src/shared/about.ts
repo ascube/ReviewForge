@@ -1,6 +1,6 @@
 export const about = {
   name: "ReviewForge Desktop",
-  version: "2.1.0",
+  version: "2.1.1",
   author: "Kevin Sun",
   bio: {
     en: "An IT guy working for IHG.",

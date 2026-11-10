@@ -1,6 +1,11 @@
 # Changelog
 
-## 2.1.0 — 2026-11-10
+## 2.1.1 — 2026-11-10
+
+- Make the rollback fault-injection test use platform-independent path matching, so Windows actually exercises the intended write failure.
+- Ship the 2.1 workflow parity changes below after native-platform validation.
+
+## 2.1.0 — validation candidate, not published
 
 - Complete the identified Swift workflow parity gaps: original-snapshot validation, durable fix recovery copies and rollback, workspace file editing/discard, and preserved original AI findings.
 - Persist and reconcile exact push attempts, including network interruption followed by external amend; verify contained commits rather than requiring identical remote/local tips.

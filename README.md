@@ -29,7 +29,7 @@ Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForg
 
 
 - **macOS Apple Silicon / Intel:** open the `.dmg` and drag **ReviewForge Desktop** to Applications. The `.zip` also contains the complete application.
-- **Windows x64:** run `ReviewForge-Desktop-2.1.0-Windows-x64.exe`. The public installer installs for the current user. A portable `.zip` is also available.
+- **Windows x64:** run `ReviewForge-Desktop-2.1.1-Windows-x64.exe`. The public installer installs for the current user. A portable `.zip` is also available.
 - Git and the platform-specific Copilot runtime are bundled. End users do not need Node.js, Python, Xcode, or a separate Git installation for the app’s repository operations. Project test commands still need their normal project toolchain.
 - This development distribution is not Developer ID notarized or Authenticode signed. Production distribution should be signed with the publisher’s certificates. Native platform CI checks are recorded in GitHub Actions. Windows installation and interactive UI acceptance still require manual validation.
 

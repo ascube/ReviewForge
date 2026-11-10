@@ -277,7 +277,8 @@ test("multi-file failure restores already written files and retains durable reco
     }));
     c.store.save(d);
     fs.rename = async (a, b) => {
-      if (String(b).endsWith("/b.ts")) throw Error("Synthetic write failure");
+      if (path.basename(String(b)) === "b.ts")
+        throw Error("Synthetic write failure");
       return rename(a, b);
     };
     await assert.rejects(
