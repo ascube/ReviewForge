@@ -47,3 +47,17 @@ Developer ID notarization and Authenticode signing require publisher credentials
 - No new live Copilot or GitHub PR write verification is claimed for this documentation/distribution update.
 
 - Final 2.0.2 packaged macOS smoke returned `ok: true` with Git 2.56.0 and the native Copilot runtime loaded. Both platform ASARs match the production bundles and contain MIT/third-party licenses; local data, credentials and Git metadata are excluded.
+
+## Native public-release CI — v2.0.2
+
+[Build run 42905044776](https://github.com/ascube/ReviewForge/actions/runs/42905044776) completed successfully on 2026-11-10 for source commit `904203de54b901f0db87df0065cdfd799e04a292`.
+
+| Runner | Typecheck / 24 tests / build | Native packaging | Packaged Git / SQLite / Copilot runtime |
+| --- | --- | --- | --- |
+| macOS ARM64 | Passed | Passed | Passed |
+| macOS Intel x64 | Passed | Passed | Passed |
+| Windows x64 | Passed | Passed | Passed |
+
+Public installer assets are assembled from these native build artifacts. This supersedes the earlier cross-build-only runtime limitation for Windows and Intel, while interactive installation/UI acceptance on those platforms remains outstanding. No publisher signature or notarization was added. Public screenshots use synthetic data only.
+
+The source ZIP retains the tag's application code and overlays current public documentation. The release metadata records both revisions. README and setup/build guides explain why Copilot was chosen (the author's workplace-mandated tool), and explicitly exclude company source, internal documents, business data, credentials and private repository information from this public distribution.

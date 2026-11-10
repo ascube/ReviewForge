@@ -2,6 +2,8 @@
 
 [简体中文](USER_GUIDE.zh-CN.md) · [Home](../README.md)
 
+See the [step-by-step setup](SETUP.md) and [source-build guide](BUILDING.md).
+
 ## Installation
 
 Download from [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest). Select macOS Apple Silicon (arm64), macOS Intel (x64), or Windows x64; there is no Linux release. Use macOS 13+ or Windows 10/11 x64. The bundled Git LFS requires macOS 13+. Apple Silicon has been exercised locally; native CI build/runtime results are available in GitHub Actions. Windows and Intel interactive UI/installation acceptance remains outstanding.

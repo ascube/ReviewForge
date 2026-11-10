@@ -4,6 +4,17 @@
 
 **审查代码、处理反馈，每次发布由你确认。**
 
+## 个人项目 · 不含任何公司内部信息
+
+**本公开仓库、发行文档和截图不包含任何公司源码、内部文档、业务数据、凭据或私有仓库信息。** 截图仅使用合成演示数据。这是 Kevin Sun 的个人项目，并非 IHG、GitHub 或 Microsoft 的官方或背书产品。
+
+### 为什么后台使用 GitHub Copilot？
+
+**因为 GitHub Copilot 是工作中规定使用的工具，所以我选择它作为 ReviewForge 的 AI 后台。** 我希望在既定工具之上，建立更有依据、更一致的代码审查流程。这不表示本项目包含公司代码、内部系统或公司提供的凭据。
+
+使用时连接你自己有权使用的账号，并自行选择仓库。开始 AI 分析或生成时，选定上下文会发送给 GitHub Copilot，请遵循仓库所有者的使用规则。“公开发行内容不含公司信息”与用户后续自行选择的审查内容是两回事。
+
+
 ReviewForge 是基于 Electron、TypeScript 和 React 的 macOS / Windows 桌面应用，使用 GitHub Copilot 审查远程 PR 和本地仓库，生成修复与回复草稿。所有内容先保存在本地，预览并批准后才能发布。
 
 ![本地代码审查](docs/screenshots/local-review.png)
@@ -20,6 +31,57 @@ ReviewForge 是基于 Electron、TypeScript 和 React 的 macOS / Windows 桌面
 | Windows x64 | `.exe`，安装到当前用户目录 | 便携 `.zip` |
 
 已内置 Git 和 Copilot 运行时，普通用户无需安装 Node.js、Python、Xcode 或 Git。运行仓库测试仍需项目自己的工具链。当前发布未做 Apple 公证或 Windows 发布者签名；公开安装包来自原生平台 CI 构建，运行时检查结果见 Actions；Windows 安装及交互界面仍需人工验收。详细要求和校验方法见[安装指南](docs/USER_GUIDE.zh-CN.md#安装)。
+
+## 首次设置：一步一步操作
+
+1. **安装并启动：** 从 [Releases](https://github.com/ascube/ReviewForge/releases/latest) 下载对应系统和架构的安装包，安装后启动 ReviewForge Desktop。
+2. **选择语言：** 打开 **Settings → Language**。首次默认英文，可选简体中文并保存选择。
+3. **连接 GitHub：** 使用 PR 功能时，在 **GitHub token** 中填写你有权使用的凭据，再点 **Check GitHub／检查 GitHub**。仅做本地审查不需要 GitHub 发布凭据。
+4. **连接 Copilot：** 在 **Copilot token** 中填写支持 Copilot 的授权凭据，或留空复用已有 GitHub CLI 登录。已保存的 Copilot token 优先。点击 **Check Copilot / load models／检查 Copilot / 加载模型**。
+5. **选择模型：** 从连接检查返回的模型中选择，或使用默认模型。账号权限、订阅及组织访问规则仍然适用。
+6. **设置本地偏好：** 可更改数据目录。若要在应用内提交代码，填写你自己的 **Commit author／提交作者** 姓名和邮箱；这是 Git 提交信息，不是工具作者的联系方式。
+7. **保存设置：** 先用自己有权使用的仓库执行 **本地审查 → 选择仓库 → 最新提交 → 捕获快照 → 分析**。
+8. **审核后再发布：** 逐条检查发现或修复提案；代码推送、审查发布以及回复／解决评论，各自需要预览和批准。
+
+详见[逐步设置指南](docs/SETUP.zh-CN.md)。不要在公开 Issue 或截图中放入 token、公司信息。
+
+## 从源码构建：一步一步操作
+
+1. 安装 **Git** 和 **Node.js 24+**（包含 npm）。在 Terminal 或 PowerShell 中确认 `git --version`、`node --version`、`npm --version` 可用。
+2. 获取公开源码：
+
+   ```sh
+   git clone https://github.com/ascube/ReviewForge.git
+   cd ReviewForge
+   ```
+
+3. 安装锁定版本的依赖：
+
+   ```sh
+   npm ci
+   ```
+
+4. 检查类型、运行测试并构建：
+
+   ```sh
+   npm run check
+   ```
+
+5. 本地运行桌面应用：
+
+   ```sh
+   npm start
+   ```
+
+6. **在目标系统上**生成安装包：
+
+   ```sh
+   npm run make
+   ```
+
+   macOS 的 DMG／ZIP、Windows 的 Setup EXE／ZIP 都在 `out/make/` 下。默认使用当前机器的 CPU 架构；未配置发布者签名时，产物为未签名版本。
+
+构建和自动化测试不需要任何公司仓库、凭据、私有包源或内部服务；启动后使用 AI 功能才需要你自己的 Copilot 授权。平台细节、产物位置、可选 Windows NSIS 打包及排错见[完整构建指南](docs/BUILDING.zh-CN.md)。
 
 ## 主要功能
 

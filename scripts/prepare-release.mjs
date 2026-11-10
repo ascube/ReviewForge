@@ -52,17 +52,6 @@ for (const [artifact, platform, arch] of [
     );
   }
 }
-execFileSync("git", [
-  "archive",
-  "--format=zip",
-  `--prefix=ReviewForge-${version}/`,
-  `--output=${path.join(output, `ReviewForge-${version}-Source.zip`)}`,
-  tag,
-  ...execFileSync("git", ["ls-tree", "--name-only", tag], { encoding: "utf8" })
-    .trim()
-    .split("\n")
-    .filter((name) => !["RELEASE.json", "SHA256SUMS"].includes(name)),
-]);
 const documentFiles = [
   "README.md",
   "README.zh-CN.md",
@@ -74,6 +63,40 @@ const documentFiles = [
   "VALIDATION.md",
   "docs",
 ];
+// Keep application code pinned to the verified tag, and include current public guides.
+// Both commits are recorded in RELEASE.json; local-build checksum records are omitted.
+const sourceStage = path.resolve(".release-source");
+const sourceFolder = `ReviewForge-${version}`;
+await fs.mkdir(path.join(sourceStage, sourceFolder), { recursive: true });
+const sourceTar = path.join(sourceStage, "source.tar");
+const sourcePaths = execFileSync("git", ["ls-tree", "--name-only", tag], {
+  encoding: "utf8",
+})
+  .trim()
+  .split("\n")
+  .filter((name) => !["RELEASE.json", "SHA256SUMS"].includes(name));
+execFileSync("git", [
+  "archive",
+  "--format=tar",
+  `--output=${sourceTar}`,
+  tag,
+  ...sourcePaths,
+]);
+execFileSync("tar", [
+  "-xf",
+  sourceTar,
+  "-C",
+  path.join(sourceStage, sourceFolder),
+]);
+for (const name of documentFiles)
+  await fs.cp(name, path.join(sourceStage, sourceFolder, name), {
+    recursive: true,
+  });
+execFileSync(
+  "zip",
+  ["-qr", path.join(output, `ReviewForge-${version}-Source.zip`), sourceFolder],
+  { cwd: sourceStage },
+);
 execFileSync("zip", [
   "-qr",
   path.join(output, `ReviewForge-${version}-Documentation.zip`),

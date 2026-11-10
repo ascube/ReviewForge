@@ -6,6 +6,17 @@
 
 **Review code. Understand feedback. Approve every publication.**
 
+## Personal project · no company information
+
+**This public repository, its release documentation and screenshots contain no company source code, internal documents, business data, credentials, or private repository information.** The screenshots use synthetic demonstration data. This is a personal project by Kevin Sun, not an official or endorsed IHG, GitHub or Microsoft product.
+
+### Why GitHub Copilot?
+
+**GitHub Copilot is the tool mandated for my work, so I chose it as ReviewForge's AI backend.** The aim is to bring a structured, evidence-based review workflow to the tool I already have to use. This choice does not imply that any company code, internal system or company-provided credential is included in this project.
+
+You connect your own authorized account and choose the repositories to review. When you start AI analysis or generation, the selected context is sent to GitHub Copilot; follow the repository owner's rules for sharing code. The absence of company data in this public distribution is separate from what you later choose to review locally.
+
+
 ![Local review with file progress and categorized findings](docs/screenshots/local-review.png)
 
 *Actual macOS interface with synthetic demonstration data. Screenshots are illustrative, not a live GitHub PR or a new Copilot result.*
@@ -21,6 +32,57 @@ Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForg
 - **Windows x64:** run `ReviewForge-Desktop-2.0.2-Windows-x64.exe`. The public installer installs for the current user. A portable `.zip` is also available.
 - Git and the platform-specific Copilot runtime are bundled. End users do not need Node.js, Python, Xcode, or a separate Git installation for the app’s repository operations. Project test commands still need their normal project toolchain.
 - This development distribution is not Developer ID notarized or Authenticode signed. Production distribution should be signed with the publisher’s certificates. Native platform CI checks are recorded in GitHub Actions. Windows installation and interactive UI acceptance still require manual validation.
+
+## Set up the app — step by step
+
+1. **Install and launch:** download the matching installer from [Releases](https://github.com/ascube/ReviewForge/releases/latest), install it, then open ReviewForge Desktop.
+2. **Choose a language:** open **Settings → Language**. English is the first-launch default; Simplified Chinese is optional and your choice is saved.
+3. **Connect GitHub for PR workflows:** enter your authorized GitHub credential under **GitHub token**, then click **Check GitHub**. Local-only review does not require a GitHub publishing credential.
+4. **Connect Copilot:** enter an authorized Copilot-compatible token under **Copilot token**, or leave it empty to use an existing GitHub CLI login. A saved Copilot token takes priority. Click **Check Copilot / load models**.
+5. **Choose a model:** select a model returned by the connection check, or leave the default. Account entitlement and organization access rules still apply.
+6. **Set local preferences:** choose a data directory if desired. If you plan to commit from ReviewForge, enter your own **Commit author** name and email; these are your Git commit details, not the tool author's contact details.
+7. **Save settings**, then start with **Local Review → Choose repository → Latest commit → Capture snapshot → Analyze** on a repository you are authorized to use.
+8. **Inspect before publishing:** review each finding/proposal; pushing code, posting reviews and resolving feedback each require their own preview and approval.
+
+See the [detailed setup guide](docs/SETUP.md) for credential steps, account switching and troubleshooting. Never put tokens or company information in public issues or screenshots.
+
+## Build from source — step by step
+
+1. Install **Git** and **Node.js 24+** (npm is included). Confirm `git --version`, `node --version` and `npm --version` work in Terminal or PowerShell.
+2. Clone the public repository:
+
+   ```sh
+   git clone https://github.com/ascube/ReviewForge.git
+   cd ReviewForge
+   ```
+
+3. Install the locked dependencies:
+
+   ```sh
+   npm ci
+   ```
+
+4. Typecheck, run the tests and build:
+
+   ```sh
+   npm run check
+   ```
+
+5. Run the desktop app locally:
+
+   ```sh
+   npm start
+   ```
+
+6. Create an installer **on the target operating system**:
+
+   ```sh
+   npm run make
+   ```
+
+   On macOS, find the DMG/ZIP under `out/make/`; on Windows, find the Setup EXE/ZIP under `out/make/`. The default build uses the machine's CPU architecture. Locally built packages are unsigned unless you configure publisher signing.
+
+No company repository, credential, private package registry or internal service is required to build or run the automated tests. AI requests require your own authorized Copilot access after startup. Read the [full source-build guide](docs/BUILDING.md) for platform details, expected output, optional Windows NSIS packaging and troubleshooting.
 
 ## Screenshots
 

@@ -2,6 +2,8 @@
 
 [English](USER_GUIDE.md) · [首页](../README.zh-CN.md)
 
+另见[逐步设置](SETUP.zh-CN.md)与[源码构建指南](BUILDING.zh-CN.md)。
+
 ## 安装
 
 从 [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest) 下载。当前提供 macOS Apple Silicon（arm64）、macOS Intel（x64）和 Windows x64，无 Linux 安装包。建议使用 macOS 13+ 或 Windows 10/11 x64；内置 Git LFS 要求 macOS 13+。已在 Apple Silicon 实际操作验证；各平台原生 CI 构建与运行时结果见 Actions，Intel 和 Windows 的交互界面及安装验收仍待人工完成。

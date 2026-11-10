@@ -22,3 +22,4 @@ coverage/
 
 .release-input/
 .release-output/
+.release-source/
