@@ -16,10 +16,10 @@ ReviewForge 是基于 Electron、TypeScript 和 React 的 macOS / Windows 桌面
 
 | 系统 | 推荐安装包 | 其他选项 |
 | --- | --- | --- |
-| macOS Apple Silicon | `.dmg`，拖到 Applications | `.zip` |
+| macOS Apple Silicon / Intel | `.dmg`，拖到 Applications | `.zip` |
 | Windows x64 | `.exe`，可选择安装目录 | 便携 `.zip` |
 
-已内置 Git 和 Copilot 运行时，普通用户无需安装 Node.js、Python、Xcode 或 Git。运行仓库测试仍需项目自己的工具链。当前发布未做 Apple 公证或 Windows 发布者签名；Windows 包为交叉构建，真实 Windows 安装及运行仍待验证。macOS Intel 暂不提供已验证安装包。详细要求和校验方法见[安装指南](docs/USER_GUIDE.zh-CN.md#安装)。
+已内置 Git 和 Copilot 运行时，普通用户无需安装 Node.js、Python、Xcode 或 Git。运行仓库测试仍需项目自己的工具链。当前发布未做 Apple 公证或 Windows 发布者签名；公开安装包来自原生平台 CI 构建，运行时检查结果见 Actions；Windows 安装及交互界面仍需人工验收。详细要求和校验方法见[安装指南](docs/USER_GUIDE.zh-CN.md#安装)。
 
 ## 主要功能
 

@@ -4,7 +4,7 @@
 
 ## Installation
 
-Download from [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest). Select macOS Apple Silicon (arm64) or Windows x64; there is no Linux release. Use macOS 13+ or Windows 10/11 x64. The bundled Git LFS requires macOS 13+. Apple Silicon has been exercised locally; native Intel and Windows acceptance remains outstanding.
+Download from [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest). Select macOS Apple Silicon (arm64), macOS Intel (x64), or Windows x64; there is no Linux release. Use macOS 13+ or Windows 10/11 x64. The bundled Git LFS requires macOS 13+. Apple Silicon has been exercised locally; native CI build/runtime results are available in GitHub Actions. Windows and Intel interactive UI/installation acceptance remains outstanding.
 
 - **macOS:** open the DMG and drag ReviewForge Desktop to Applications; launch from Applications. ZIP users extract the complete application first.
 - **Windows:** run the EXE installer, choose a per-user installation location, then launch ReviewForge Desktop. For the portable ZIP, extract the entire directory before running ReviewForgeDesktop.exe; retain its accompanying resources.
@@ -16,7 +16,7 @@ Download from [GitHub Releases](https://github.com/ascube/ReviewForge/releases/l
 
 The initial language is English even on a Chinese operating system. Open **Settings → Language** to select Simplified Chinese; the choice is saved immediately. User content and paths are not translated.
 
-GitHub and Copilot credentials are configured separately. GitHub repository operations need access to the target repository; publishing reviews, pushing and resolving threads additionally need the corresponding write permissions. Copilot needs an entitled account. See [GitHub's authentication documentation](https://docs.github.com/en/copilot/how-tos/copilot-sdk/authenticate).
+GitHub and Copilot credentials are configured separately. GitHub repository operations need access to the target repository; publishing reviews, pushing and resolving threads additionally need the corresponding write permissions. Copilot needs an entitled account. See [GitHub's authentication documentation](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/authenticate).
 
 A configured Copilot token takes priority; otherwise the app can use the existing GitHub CLI login. An unrelated editor login is not automatically imported. Never put tokens in PR descriptions or review instructions. Use **Check GitHub** and **Check Copilot / load models** to verify access. Organizations may require SSO authorization, approved networks or VPN access. The app does not bypass those requirements.
 

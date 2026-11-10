@@ -4,7 +4,7 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest) 下载。当前提供 macOS Apple Silicon（arm64）和 Windows x64，无 Linux 安装包。建议使用 macOS 13+ 或 Windows 10/11 x64；内置 Git LFS 要求 macOS 13+。已在 Apple Silicon 实际验证；Intel 和 Windows 的原生验收仍待完成。
+从 [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest) 下载。当前提供 macOS Apple Silicon（arm64）、macOS Intel（x64）和 Windows x64，无 Linux 安装包。建议使用 macOS 13+ 或 Windows 10/11 x64；内置 Git LFS 要求 macOS 13+。已在 Apple Silicon 实际操作验证；各平台原生 CI 构建与运行时结果见 Actions，Intel 和 Windows 的交互界面及安装验收仍待人工完成。
 
 - **macOS：** 打开 DMG，拖入 Applications 后启动；ZIP 需先完整解压。
 - **Windows：** EXE 支持选择当前用户安装目录；便携 ZIP 必须整体解压，再运行 ReviewForgeDesktop.exe，不要单独移动 EXE。

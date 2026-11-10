@@ -19,3 +19,6 @@ out/
 *.pfx
 *.key
 coverage/
+
+.release-input/
+.release-output/

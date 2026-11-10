@@ -14,13 +14,13 @@ A macOS + Windows desktop application for local-first code review and addressing
 
 ## Download and install
 
-Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest)**. Release assets include macOS Apple Silicon DMG/ZIP, Windows x64 EXE/ZIP, source, documentation, dependency notices and SHA-256 checksums. See the [installation guide](docs/USER_GUIDE.md#installation).
+Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest)**. Release assets include macOS Apple Silicon and Intel DMG/ZIP, Windows x64 EXE/ZIP, source, documentation, dependency notices and SHA-256 checksums. See the [installation guide](docs/USER_GUIDE.md#installation).
 
 
-- **macOS Apple Silicon:** open the `.dmg` and drag **ReviewForge Desktop** to Applications. The `.zip` also contains the complete application.
+- **macOS Apple Silicon / Intel:** open the `.dmg` and drag **ReviewForge Desktop** to Applications. The `.zip` also contains the complete application.
 - **Windows x64:** run `ReviewForge-Desktop-2.0.2-Windows-x64.exe`. The installer supports a per-user installation and a custom destination. A portable `.zip` is also available.
 - Git and the platform-specific Copilot runtime are bundled. End users do not need Node.js, Python, Xcode, or a separate Git installation for the app’s repository operations. Project test commands still need their normal project toolchain.
-- This development distribution is not Developer ID notarized or Authenticode signed. Production distribution should be signed with the publisher’s certificates. Windows runtime behavior must still be verified on a real Windows machine; cross-building an installer does not substitute for that check.
+- This development distribution is not Developer ID notarized or Authenticode signed. Production distribution should be signed with the publisher’s certificates. Native platform CI checks are recorded in GitHub Actions. Windows installation and interactive UI acceptance still require manual validation.
 
 ## Screenshots
 
@@ -89,6 +89,8 @@ ReviewForge source code and original assets are licensed under the [MIT License]
 
 This is a personal project by Kevin Sun, an IT guy working for IHG. It is not an official IHG, GitHub or Microsoft product.
 
+Public installer checksums are attached to each GitHub Release as `SHA256SUMS`; use the file from the same release as your download. Source tags may contain historical local build records whose checksums differ from cloud-built installers.
+
 ## Contributing and support
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), use the [issue tracker](https://github.com/ascube/ReviewForge/issues) for bugs and feature requests, and see [SECURITY.md](SECURITY.md) for sensitive reports. Do not attach credentials, private repository content or unredacted logs to public issues.
@@ -107,7 +109,7 @@ npm run make:windows  # isolated Windows x64 NSIS + ZIP cross-build
 
 The cross-build script creates `.cache/windows-stage`, installs Windows-specific production dependencies, verifies official Electron/embedded-Git checksums, and packages a self-contained NSIS installer. It does not modify the macOS dependency installation. Native dependencies are unpacked from ASAR so Copilot’s dynamic libraries resolve correctly.
 
-`.github/workflows/build.yml` runs checks, native packaging and a packaged Git/SQLite/Copilot-runtime smoke test on macOS ARM64, macOS x64 and Windows x64. The workflow is supplied but has not been executed remotely by this task.
+`.github/workflows/build.yml` runs checks, native packaging and a packaged Git/SQLite/Copilot-runtime smoke test on macOS ARM64, macOS x64 and Windows x64. See [Actions](https://github.com/ascube/ReviewForge/actions) for actual build and smoke-test results.
 
 For macOS signing, configure `APPLE_SIGN_IDENTITY` and optionally `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`. Native Windows Forge signing accepts `WINDOWS_CERTIFICATE`/`WINDOWS_CERTIFICATE_PASSWORD`; the NSIS script uses electron-builder’s `CSC_LINK`/`CSC_KEY_PASSWORD`. No signing credentials are included in this project.
 

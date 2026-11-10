@@ -27,7 +27,7 @@
 
 ## Distribution limits
 
-The macOS application was tested on Apple Silicon. Windows x64 is cross-built with Windows-specific Electron, Git and Copilot native dependencies. No Windows machine is attached to this task, so Windows installation/runtime execution is not claimed. Native macOS x64 and Windows CI definitions are included, but no remote CI run was initiated. No live GitHub review, push, comment or resolve operation was performed. External write flows were tested against mocked transports/local fixture repositories.
+The macOS application was tested on Apple Silicon. Windows x64 is cross-built with Windows-specific Electron, Git and Copilot native dependencies. No Windows machine is attached to this task, so Windows installation/runtime execution is not claimed. Native macOS x64 and Windows CI definitions are included, with subsequent public-release runs recorded below. No live GitHub review, push, comment or resolve operation was performed. External write flows were tested against mocked transports/local fixture repositories.
 
 Developer ID notarization and Authenticode signing require publisher credentials and were not performed.
 

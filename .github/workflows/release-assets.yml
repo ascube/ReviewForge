@@ -1,0 +1,54 @@
+name: Prepare verified release assets
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Successful Build ReviewForge Desktop run ID for this tag
+        required: true
+      tag:
+        description: Existing version tag (for example v2.0.2)
+        required: true
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: release-assets-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN: ${{ inputs.build_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify completed build provenance and draft release
+        shell: bash
+        run: |
+          [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          expected=$(git rev-parse "$RELEASE_TAG^{commit}")
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN" > /tmp/build.json
+          jq -e --arg sha "$expected" '.head_sha == $sha and .conclusion == "success" and .event == "push" and .path == ".github/workflows/build.yml"' /tmp/build.json
+          gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft | grep -qx true
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: .release-input
+      - name: Assemble installers, documentation, sources and checksums
+        run: node scripts/prepare-release.mjs
+      - name: Upload verified assets and leave release as draft
+        run: gh release upload "$RELEASE_TAG" .release-output/* --clobber
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-metadata
+          path: |
+            .release-output/RELEASE.json
+            .release-output/SHA256SUMS
