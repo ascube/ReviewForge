@@ -68,3 +68,9 @@ The source ZIP retains the tag's application code and overlays current public do
 - English and Simplified Chinese settings/error layouts were inspected in an isolated macOS profile. A synthetic nonexistent PR produced the expected localized 404 guidance. No real PR write or Copilot generation was performed for this update.
 - The local 2.0.3 Apple Silicon DMG and ZIP passed integrity checks. Packaged Git, SQLite and native Copilot runtime passed `--smoke-test`; packaged main/preload/worker bundles match the production build.
 - Missing-token guidance does not grant repository access: users must configure their own authorized GitHub credential. Private PR import success is not claimed by these diagnostics tests.
+
+### Native CI — v2.0.3
+
+[Build run 42916320842](https://github.com/ascube/ReviewForge/actions/runs/42916320842) completed successfully for source commit `222d1ee7468d4fba85241340696632669bea7f33`.
+
+macOS ARM64, macOS Intel x64 and Windows x64 each passed type checking, all 27 tests, production build, native packaging, and packaged Git/SQLite/Copilot runtime smoke checks. Release installers come from these native CI artifacts. The application code remains pinned to `v2.0.3`; the source/documentation ZIPs include this validation record, and both revisions are recorded in `RELEASE.json`.
