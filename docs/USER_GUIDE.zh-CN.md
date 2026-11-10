@@ -7,7 +7,7 @@
 从 [GitHub Releases](https://github.com/ascube/ReviewForge/releases/latest) 下载。当前提供 macOS Apple Silicon（arm64）、macOS Intel（x64）和 Windows x64，无 Linux 安装包。建议使用 macOS 13+ 或 Windows 10/11 x64；内置 Git LFS 要求 macOS 13+。已在 Apple Silicon 实际操作验证；各平台原生 CI 构建与运行时结果见 Actions，Intel 和 Windows 的交互界面及安装验收仍待人工完成。
 
 - **macOS：** 打开 DMG，拖入 Applications 后启动；ZIP 需先完整解压。
-- **Windows：** EXE 支持选择当前用户安装目录；便携 ZIP 必须整体解压，再运行 ReviewForgeDesktop.exe，不要单独移动 EXE。
+- **Windows：** EXE 安装到当前用户目录；便携 ZIP 必须整体解压，再运行 ReviewForgeDesktop.exe，不要单独移动 EXE。
 - **签名状态：** 当前没有 Apple Developer ID 公证或 Windows Authenticode 发布者签名。请遵循设备和组织安全策略，不要关闭安全防护来安装。
 - **校验：** 下载 SHA256SUMS。macOS 使用 `shasum -a 256 文件名`，Windows PowerShell 使用 `Get-FileHash -Algorithm SHA256 文件名`，核对相应校验值。校验值用于检测文件是否变化，不等同于签名。
 - **升级：** 退出应用再替换或安装新版，建议先备份数据目录。草稿与应用分开保存；不迁移旧 Swift 版数据。
