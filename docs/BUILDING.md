@@ -23,7 +23,7 @@ git clone https://github.com/ascube/ReviewForge.git
 cd ReviewForge
 ```
 
-To reproduce a specific version, optionally run `git checkout v2.1.1` before installing. `main` contains the latest documentation and maintenance changes. A release's Source ZIP also contains the app code and an accompanying provenance record in the release metadata.
+To reproduce a specific version, optionally run `git checkout v2.1.2` before installing. `main` contains the latest documentation and maintenance changes. A release's Source ZIP also contains the app code and an accompanying provenance record in the release metadata.
 
 ## 3. Install locked dependencies
 

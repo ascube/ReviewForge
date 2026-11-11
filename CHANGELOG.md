@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.2
+
+- Add in-app Copilot browser/device authorization, with automatic prompting when no login is available and automatic continuation after authorization.
+- Reuse the stored login without changing GitHub repository credentials or the active GitHub CLI account; provide an explicit browser sign-in button.
+- Add bilingual authorization UI, manual browser fallback, code copying, cancellation and expiry; reject plaintext credential persistence.
+
+
 ## 2.1.1 — 2026-11-10
 
 - Make the rollback fault-injection test use platform-independent path matching, so Windows actually exercises the intended write failure.

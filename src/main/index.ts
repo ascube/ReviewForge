@@ -20,6 +20,7 @@ import { githubCredential } from "./credentials";
 import { reviewReport } from "./report";
 import { Store } from "./store";
 import { Service } from "./service";
+import { loginPrompt } from "./copilot-login";
 import { Copilot } from "./copilot";
 import { repoInfo, gitText } from "./git";
 import { ForgeError, fail, digest, redact } from "./util";
@@ -212,6 +213,7 @@ async function dispatch(method: string, args: any) {
       authorEmail: v.authorEmail,
       githubConfigured: Boolean(await readSecret("github")),
       copilotConfigured: Boolean(await readSecret("copilot")),
+      preferSDKLogin: v.copilotToken ? false : prefs.preferSDKLogin,
     };
     service.settings = prefs;
     await savePrefs();
@@ -287,6 +289,7 @@ async function dispatch(method: string, args: any) {
   }
   if (method === "openDemo") return service.openDemo();
   if (method === "connection") return service.connection();
+  if (method === "copilotLogin") return service.connection(true);
   if (method === "githubConnection") {
     const credential = await githubCredential(await readSecret("github"));
     const login = await service.githubConnection();
@@ -528,7 +531,31 @@ app
     service = new Service(
       store,
       prefs,
-      new Copilot(),
+      new Copilot(async (event, args) => {
+        if (event === "clear") {
+          service.copilotLogin = undefined;
+          emit();
+          return;
+        }
+        if (event === "complete") {
+          prefs.preferSDKLogin = true;
+          await savePrefs();
+          service.copilotLogin = undefined;
+          emit();
+          return;
+        }
+        const prompt = loginPrompt.parse(args);
+        service.copilotLogin = { ...prompt, browserOpened: false };
+        emit();
+        try {
+          await shell.openExternal(prompt.url);
+          if (service.copilotLogin?.code === prompt.code)
+            service.copilotLogin.browserOpened = true;
+        } catch {
+          /* Keep a manual link/code available if opening the browser fails. */
+        }
+        emit();
+      }),
       {
         read: async (key) =>
           key === "github"

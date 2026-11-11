@@ -13,6 +13,7 @@ export interface Settings {
   githubIdentity?: string;
   copilotIdentity?: { login?: string; source: string };
   copilotConfigured: boolean;
+  preferSDKLogin?: boolean;
 }
 export interface PR {
   owner: string;
@@ -195,6 +196,12 @@ export interface AppState {
   drafts: Draft[];
   progress: Progress;
   models: string[];
+  copilotLogin?: {
+    url: string;
+    code: string;
+    expiresAt: number;
+    browserOpened: boolean;
+  };
 }
 export interface RepoInfo {
   directory: string;

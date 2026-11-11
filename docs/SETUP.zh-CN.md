@@ -30,7 +30,19 @@ PR 请求依次使用已保存的 **GitHub token**、`GH_TOKEN`/`GITHUB_TOKEN`�
 
 ## 4. 配置 Copilot
 
-需要有 Copilot 使用权限的账号及组织要求的授权。二选一：
+需要有 Copilot 使用权限的账号及组织要求的授权。
+
+**推荐通过浏览器登录，无需复制 token 或安装 GitHub CLI。**
+
+1. 打开 **设置 → GitHub Copilot → 通过浏览器登录**。
+2. 复制应用显示的一次性验证码。应用会自动打开 GitHub 授权页面；未打开时可点击 **打开 GitHub 授权页面**。
+3. 输入验证码，使用有 Copilot 权限的账号确认授权。
+4. 返回 ReviewForge，应用自动完成登录并加载模型。运行时通过系统凭据存储保存登录，不接受明文存储回退。
+5. 后续使用会复用登录。如果开始分析时没有可用登录，应用自动发起此授权流程，确认后继续原操作；取消或过期会保留本地工作。
+
+浏览器登录会成为 Copilot 的首选凭据来源，不会更改 GitHub 仓库凭据或 GitHub CLI 当前账号。明确保存新 Copilot token 会切回该 token。无效的已有 token、订阅不足、VPN／SSO 限制或网络错误仍可能需要处理，不会无限循环登录。
+
+其他方式：
 
 - **已有批准的凭据：** 在 **Copilot token** 输入支持 Copilot 的凭据。支持方式见 [GitHub 官方说明](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/authenticate)，此 Copilot 认证路径不支持 classic PAT。
 - **GitHub CLI 登录：** 从 [cli.github.com](https://cli.github.com) 安装 CLI，在终端／PowerShell 执行：

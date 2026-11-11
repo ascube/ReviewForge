@@ -2,6 +2,12 @@ import { utilityProcess } from "electron";
 import path from "node:path";
 import { cleanEnv, ForgeError, redact } from "./util";
 export class Copilot {
+  constructor(
+    private authentication?: (
+      event: "prompt" | "complete" | "clear",
+      args?: any,
+    ) => Promise<void>,
+  ) {}
   private current: ReturnType<typeof utilityProcess.fork> | undefined;
   async run(
     message: any,
@@ -27,6 +33,7 @@ export class Copilot {
         clearTimeout(timer);
         this.current = undefined;
         child.kill();
+        void this.authentication?.("clear");
         error ? reject(error) : resolve(value);
       };
       const timer = setTimeout(
@@ -44,7 +51,23 @@ export class Copilot {
         if (data.type === "error") finish(new ForgeError(data.en, data.zh));
         if (data.type === "tool") {
           try {
-            const value = await onTool(data.op, data.args);
+            if (
+              (data.op === "authentication" ||
+                data.op === "authenticationComplete") &&
+              !this.authentication
+            )
+              throw new ForgeError(
+                "Open ReviewForge Settings to sign in to Copilot.",
+                "请打开 ReviewForge 设置登录 Copilot。",
+              );
+            const value =
+              data.op === "authentication" ||
+              data.op === "authenticationComplete"
+                ? await this.authentication?.(
+                    data.op === "authentication" ? "prompt" : "complete",
+                    data.args,
+                  )
+                : await onTool(data.op, data.args);
             if (!finished)
               child.postMessage({ type: "response", id: data.id, value });
           } catch (e) {
@@ -78,6 +101,13 @@ export class Copilot {
   }
   cancel() {
     this.current?.postMessage({ type: "cancel" });
-    this.current?.kill();
+    const child = this.current;
+    // Give the runtime time to cancel its OAuth poll, then bound shutdown.
+    if (child) {
+      const timer = setTimeout(() => {
+        if (this.current === child) child.kill();
+      }, 1500);
+      timer.unref();
+    }
   }
 }

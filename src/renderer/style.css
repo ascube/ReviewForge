@@ -1142,3 +1142,22 @@ footer button {
 .replyCard .row {
   flex-wrap: wrap;
 }
+
+.authBackdrop {
+  z-index: 200;
+}
+.authModal {
+  max-width: 600px;
+}
+.deviceCode {
+  font-size: 2rem;
+  letter-spacing: 0.16em;
+  user-select: all;
+}
+
+.deviceCode code {
+  font-size: inherit;
+}
+.authModal p {
+  margin: 0.75rem 0;
+}

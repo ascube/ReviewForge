@@ -1393,6 +1393,9 @@ function App() {
           {t("About")}
         </button>
       </footer>
+      {state.copilotLogin && (
+        <CopilotSignIn prompt={state.copilotLogin} run={run} />
+      )}
       {modal && (
         <div className="modalBackdrop">
           <div
@@ -1453,6 +1456,73 @@ function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+function CopilotSignIn({
+  prompt,
+  run,
+}: {
+  prompt: NonNullable<AppState["copilotLogin"]>;
+  run: any;
+}) {
+  const [now, setNow] = useState(Date.now());
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const remaining = Math.max(0, Math.ceil((prompt.expiresAt - now) / 1000));
+  return (
+    <div className="modalBackdrop authBackdrop">
+      <section
+        className="modal authModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="copilot-signin-title"
+      >
+        <h2 id="copilot-signin-title">{t("Sign in to Copilot")}</h2>
+        <p>
+          {t(
+            "Enter this one-time code on GitHub and authorize Copilot. ReviewForge will continue automatically.",
+          )}
+        </p>
+        <p className="deviceCode">
+          <code>{prompt.code}</code>
+        </p>
+        <div className="row">
+          <button
+            onClick={async () => {
+              await run("copy", { text: prompt.code });
+              setCopied(true);
+            }}
+          >
+            {t(copied ? "Copied" : "Copy code")}
+          </button>
+          <button onClick={() => run("openExternal", { url: prompt.url })}>
+            {t("Open GitHub authorization")}
+          </button>
+        </div>
+        <p className="muted">{prompt.url}</p>
+        <p>
+          {t(
+            prompt.browserOpened
+              ? "Waiting for browser authorization"
+              : "If the browser did not open, use the button above.",
+          )}
+        </p>
+        <p>
+          {remaining
+            ? `${t("Code expires in")} ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
+            : t("Code expired. Cancel and try again.")}
+        </p>
+        <p className="muted">
+          {t(
+            "Use an account with Copilot access. Organization VPN or SSO may still be required.",
+          )}
+        </p>
+        <button onClick={() => run("cancel")}>{t("Cancel sign-in")}</button>
+      </section>
     </div>
   );
 }
@@ -2247,6 +2317,27 @@ function SettingsPanel({ state, run, close, notice }: any) {
         {t("Check GitHub")}
       </button>
       <h3>GitHub Copilot</h3>
+      <button
+        disabled={state.progress.busy}
+        onClick={async () => {
+          setStatus("");
+          if (await save()) {
+            const result = await run("copilotLogin");
+            if (result)
+              setStatus(t("Copilot models available") + " · " + result.length);
+          }
+        }}
+      >
+        {t("Sign in with browser")}
+      </button>
+      <small>
+        {t(
+          "Browser sign-in becomes the Copilot credential source. GitHub repository credentials and the GitHub CLI account are unchanged.",
+        )}
+      </small>
+      {state.settings.preferSDKLogin && (
+        <p className="success">{t("Using browser sign-in")}</p>
+      )}
       {state.settings.copilotIdentity && (
         <small>
           {state.settings.copilotIdentity.login ?? t("Account not reported")} ·{" "}
@@ -2276,7 +2367,7 @@ function SettingsPanel({ state, run, close, notice }: any) {
       </label>
       <small>
         {t(
-          "Configured Copilot credentials take priority; otherwise an existing GitHub CLI or SDK login is used. Company VPN may be required.",
+          "Existing credentials are reused. Without a login, Copilot opens browser authorization when needed. Saving a new token switches back to that token. Company VPN may be required.",
         )}
       </small>
       <button

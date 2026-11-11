@@ -1,5 +1,13 @@
 # Validation — 2026-11-10
 
+## 2.1.2 Copilot browser authorization
+
+- Typecheck, 54 tests and production build passed. Seven new regression cases cover device-flow completion, allowed URLs, cancellation during polling, expiry, rejection of plaintext persistence, pre-cancellation and unsafe runtime prompts.
+- Native SDK verification obtained a real GitHub device authorization prompt and cancelled it. Actual macOS UI checks exercised the English/Chinese prompt, automatic browser opening, cancellation and the 1000×700 Chinese layout.
+- After cancellation, the existing credential still connected and loaded 8 Copilot models. No GitHub CLI account switch, repository mutation or model-generation request was made by the login tests.
+- First-time user approval and subsequent OAuth credential persistence were not completed interactively in this validation; completion and cleanup paths are covered with a controlled runtime fixture. A user must approve their own account in the browser.
+
+
 ## 2.1.1 feature parity
 
 - Compared the original Swift implementation against Desktop 2.0.3 and implemented the identified gaps; see [feature parity](docs/FEATURE_PARITY.md).

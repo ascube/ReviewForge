@@ -1,5 +1,24 @@
 import type { Language } from "../shared/types";
 const zh: Record<string, string> = {
+  "Sign in to Copilot": "登录 Copilot",
+  "Enter this one-time code on GitHub and authorize Copilot. ReviewForge will continue automatically.":
+    "请在 GitHub 输入此一次性验证码并授权 Copilot。完成后 ReviewForge 将自动继续。",
+  "Open GitHub authorization": "打开 GitHub 授权页面",
+  "Waiting for browser authorization": "正在等待浏览器授权",
+  "If the browser did not open, use the button above.":
+    "如果浏览器未打开，请点击上方按钮。",
+  "Code expires in": "验证码剩余时间",
+  "Code expired. Cancel and try again.": "验证码已过期，请取消后重试。",
+  "Use an account with Copilot access. Organization VPN or SSO may still be required.":
+    "请使用有 Copilot 权限的账号。组织可能仍要求 VPN 或 SSO 授权。",
+  "Cancel sign-in": "取消登录",
+  "Sign in with browser": "通过浏览器登录",
+  "Browser sign-in becomes the Copilot credential source. GitHub repository credentials and the GitHub CLI account are unchanged.":
+    "浏览器登录后将用该账号连接 Copilot，不会更改 GitHub 仓库凭据和 GitHub CLI 当前账号。",
+  "Using browser sign-in": "正在使用浏览器登录凭据",
+  "Existing credentials are reused. Without a login, Copilot opens browser authorization when needed. Saving a new token switches back to that token. Company VPN may be required.":
+    "优先复用已有凭据。未登录时，在使用 Copilot 时自动打开浏览器授权。保存新 token 将切换为使用该 token。可能需要连接公司 VPN。",
+
   "SDK login": "SDK 登录",
   "Account not reported": "未返回账号",
   "Comment unavailable. Verify publication before continuing.":

@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { promises as fs } from "node:fs";
 import { execFile } from "node:child_process";
 import path from "node:path";
+import { signInCopilot } from "./copilot-login";
 import { copilotDiagnostic } from "./diagnostics";
 import { GitHub } from "./github";
 import { cleanEnv, ForgeError, redact } from "./util";
@@ -26,6 +27,8 @@ function host(op: string, args: unknown) {
     send({ type: "tool", id, op, args });
   });
 }
+const loginAbort = new AbortController();
+let authenticating = false;
 const string = { type: "string" };
 function tool(
   name: string,
@@ -46,7 +49,8 @@ function tool(
     handler: async (args: any) => JSON.stringify(await host(operation, args)),
   });
 }
-async function credential(saved: string) {
+async function credential(saved: string, preferSDK = false) {
+  if (preferSDK) return { token: "", source: "SDK login" };
   if (saved) return { token: saved, source: "Settings" };
   for (const exe of process.platform === "win32"
     ? ["gh.exe"]
@@ -70,10 +74,9 @@ async function credential(saved: string) {
   return { token: "", source: "SDK login" };
 }
 async function run(message: any) {
-  const identity =
-    message.mode === "probe"
-      ? { token: "", source: "Probe" }
-      : await credential(message.token);
+  const identity = ["probe", "login"].includes(message.mode)
+    ? { token: "", source: "Probe" }
+    : await credential(message.token, message.preferSDKLogin);
   const token = identity.token;
   await fs.mkdir(message.directory, { recursive: true });
   client = new CopilotClient({
@@ -99,19 +102,45 @@ async function run(message: any) {
       });
       return;
     }
-    const auth = await client.getAuthStatus();
+    let auth = await client.getAuthStatus();
+    if (message.mode === "login" || (!auth.isAuthenticated && !token)) {
+      authenticating = true;
+      try {
+        await signInCopilot(
+          client,
+          (prompt) => host("authentication", prompt),
+          loginAbort.signal,
+        );
+      } finally {
+        authenticating = false;
+      }
+      await host("authenticationComplete", {});
+      // Re-read persisted OAuth credentials, without an earlier token override.
+      await client.stop();
+      client = new CopilotClient({
+        mode: "empty",
+        baseDirectory: message.directory,
+        workingDirectory: message.directory,
+        env: cleanEnv(),
+        logLevel: "error",
+        useLoggedInUser: true,
+      });
+      await client.start();
+      identity.source = "SDK login";
+      auth = await client.getAuthStatus();
+    }
     if (!auth.isAuthenticated) {
       if (token) await new GitHub(token).request("/user");
       throw new ForgeError(
         token
           ? "GitHub accepted the credential, but Copilot access was denied. Check your Copilot entitlement and token permissions."
-          : "Copilot is not signed in. Add a Copilot token in Settings. Or sign in with GitHub CLI.",
+          : "Copilot sign-in was not completed. Use Sign in with browser in Settings.",
         token
           ? "GitHub 接受了凭据，但 Copilot 拒绝访问。请检查订阅和 token 权限。"
-          : "Copilot 尚未登录。请在设置中添加 Copilot token，或使用 GitHub CLI 登录。",
+          : "Copilot 登录未完成，请使用设置中的“通过浏览器登录”。",
       );
     }
-    if (message.mode === "check") {
+    if (["check", "login"].includes(message.mode)) {
       send({
         type: "done",
         value: {
@@ -263,6 +292,8 @@ port.on("message", ({ data }: any) => {
     }
   }
   if (data.type === "cancel") {
+    loginAbort.abort();
+    if (authenticating) return;
     session?.abort();
     client?.stop();
     process.exit(1);

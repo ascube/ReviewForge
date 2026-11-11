@@ -30,7 +30,19 @@ PR requests use the saved **GitHub token**, then `GH_TOKEN`/`GITHUB_TOKEN`, then
 
 ## 4. Configure Copilot access
 
-You need an account entitled to use Copilot and any required organizational authorization. Choose one route:
+You need an account entitled to use Copilot and any required organizational authorization.
+
+**Recommended: browser sign-in, no token copying or GitHub CLI installation required.**
+
+1. Open **Settings → GitHub Copilot → Sign in with browser**.
+2. Copy the one-time code shown in ReviewForge. The GitHub authorization page opens automatically; use **Open GitHub authorization** if needed.
+3. Enter the code and authorize with the account that has Copilot access.
+4. Return to ReviewForge. It finishes login and loads available models automatically. The runtime saves the login through the system credential store; ReviewForge does not accept plaintext-storage fallback.
+5. Later Copilot operations reuse this login. If no credentials are available when an analysis starts, ReviewForge starts this authorization flow and continues the operation after approval. Cancel or expiry preserves local work.
+
+Browser sign-in becomes the preferred Copilot source, without changing your GitHub repository credential or GitHub CLI account. Saving a new Copilot token explicitly switches back to that token. Invalid configured tokens, missing entitlement, VPN/SSO restrictions and network errors may still require action; they do not trigger an endless login loop.
+
+Other routes:
 
 - **Existing approved credential:** enter a Copilot-compatible credential in **Copilot token**. See [GitHub's supported authentication methods](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/authenticate); classic PATs are not supported for this Copilot authentication path.
 - **GitHub CLI login:** install GitHub CLI from [cli.github.com](https://cli.github.com), open Terminal/PowerShell and run:
@@ -40,7 +52,7 @@ You need an account entitled to use Copilot and any required organizational auth
   gh auth status
   ```
 
-  Complete login in the browser with the account that has Copilot access. Leave **Copilot token** empty in ReviewForge. If a stale token was already saved, use **Clear credential** and save first: an empty field alone keeps the existing credential. With multiple accounts, use `gh auth switch --hostname github.com --user YOUR_USERNAME`, then check the active identity again. Do not type the placeholder literally.
+  Complete login in the browser with the account that has Copilot access. Leave **Copilot token** empty in ReviewForge. If a stale token was already saved, use **Clear credential** and save first: an empty field alone keeps the existing credential. If you previously chose browser sign-in, use that route or explicitly save a new token. With multiple accounts, use `gh auth switch --hostname github.com --user YOUR_USERNAME`, then check the active identity again. Do not type the placeholder literally.
 
 Click **Check Copilot / load models**. A successful GitHub connection alone does not prove Copilot access. If access is denied, check the selected account, entitlement, credential expiry, SSO and approved network requirements. ReviewForge uses a separate runtime data directory, so another editor's login is not automatically imported.
 

@@ -78,6 +78,7 @@ export class Service {
     total: 0,
   };
   models: string[] = [];
+  copilotLogin?: AppState["copilotLogin"];
   cancelled = false;
   constructor(
     public store: Store,
@@ -94,6 +95,7 @@ export class Service {
       drafts: this.store.list(),
       progress: this.progress,
       models: this.models,
+      copilotLogin: this.copilotLogin,
     };
   }
   save(d: Draft) {
@@ -154,13 +156,13 @@ export class Service {
     this.cancelled = true;
     this.ai.cancel();
   }
-  async connection() {
+  async connection(login = false) {
     return this.operation("Connecting", undefined, async () => {
       this.models = [];
       this.settings.copilotIdentity = undefined;
       this.changed();
       const result = await this.ai.run(
-        await this.aiMessage("check", {}),
+        await this.aiMessage(login ? "login" : "check", {}),
         async () => null,
       );
       this.models = z
@@ -188,6 +190,7 @@ export class Service {
       language: this.settings.language,
       model: this.settings.model,
       token: await this.secrets.read("copilot"),
+      preferSDKLogin: this.settings.preferSDKLogin,
       directory: path.join(this.store.directory, "copilot"),
     };
   }
