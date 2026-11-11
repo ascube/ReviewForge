@@ -37,7 +37,7 @@ ReviewForge 是基于 Electron、TypeScript 和 React 的 macOS / Windows 桌面
 1. **安装并启动：** 从 [Releases](https://github.com/ascube/ReviewForge/releases/latest) 下载对应系统和架构的安装包，安装后启动 ReviewForge Desktop。
 2. **选择语言：** 打开 **Settings → Language**。首次默认英文，可选简体中文并保存选择。
 3. **连接 GitHub：** 使用 PR 功能时，在 **GitHub token** 中填写你有权使用的凭据，再点 **Check GitHub／检查 GitHub**。仅做本地审查不需要 GitHub 发布凭据。
-4. **连接 Copilot：** 在 **Copilot token** 中填写支持 Copilot 的授权凭据，或留空复用已有 GitHub CLI 登录。已保存的 Copilot token 优先。点击 **Check Copilot / load models／检查 Copilot / 加载模型**。
+4. **连接 Copilot：** 点击 **Sign in with browser／通过浏览器登录**，复制验证码并在 GitHub 确认授权，应用自动加载模型并复用登录。已有批准的 token 和 GitHub CLI 凭据仍受支持。
 5. **选择模型：** 从连接检查返回的模型中选择，或使用默认模型。账号权限、订阅及组织访问规则仍然适用。
 6. **设置本地偏好：** 可更改数据目录。若要在应用内提交代码，填写你自己的 **Commit author／提交作者** 姓名和邮箱；这是 Git 提交信息，不是工具作者的联系方式。
 7. **保存设置：** 先用自己有权使用的仓库执行 **本地审查 → 选择仓库 → 最新提交 → 捕获快照 → 分析**。
@@ -95,7 +95,7 @@ ReviewForge 是基于 Electron、TypeScript 和 React 的 macOS / Windows 桌面
 ## 开始使用
 
 1. 首次启动默认英文，与系统语言无关。在 **Settings → Language → 简体中文** 切换，选择会保存。
-2. 设置 GitHub / Copilot 凭据，或使用现有 GitHub CLI 登录；点击 **检查 Copilot / 加载模型**。需要有效 Copilot 使用权限，企业 SSO/VPN 限制仍适用。
+2. 设置 GitHub 凭据，并通过浏览器登录 Copilot，或复用已有授权；点击 **检查 Copilot / 加载模型**。需要有效 Copilot 使用权限，企业 SSO/VPN 限制仍适用。
 3. 选择 **远程审查**、**本地审查** 或 **处理反馈**，按[使用指南](docs/USER_GUIDE.zh-CN.md)操作。
 
 只有启动 AI 操作时，选定代码和上下文才会发送给 GitHub Copilot。模型不具备终端执行、提交、推送、发布评论或解决线程的工具。

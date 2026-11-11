@@ -20,7 +20,7 @@ The initial language is English even on a Chinese operating system. Open **Setti
 
 GitHub and Copilot credentials are configured separately. GitHub repository operations need access to the target repository; publishing reviews, pushing and resolving threads additionally need the corresponding write permissions. Copilot needs an entitled account. See [GitHub's authentication documentation](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/authenticate).
 
-A configured Copilot token takes priority; otherwise the app can use the existing GitHub CLI login. An unrelated editor login is not automatically imported. Never put tokens in PR descriptions or review instructions. Use **Check GitHub** and **Check Copilot / load models** to verify access. Organizations may require SSO authorization, approved networks or VPN access. The app does not bypass those requirements.
+Use **Settings → GitHub Copilot → Sign in with browser**, copy the one-time code and approve it on GitHub. ReviewForge continues automatically and reuses the login later. When no login is available, it prompts when AI work starts. Browser sign-in becomes the preferred Copilot source; saving a new token switches back to that token. GitHub repository credentials and the active GitHub CLI account are unchanged. An unrelated editor login is not automatically imported. Never put tokens in PR descriptions or review instructions. Use **Check GitHub** and **Check Copilot / load models** to verify access. Organizations may require SSO authorization, approved networks or VPN access. The app does not bypass those requirements.
 
 Only configure credentials through the app or the provider's official login flow. Do not paste tokens into GitHub issues. Credentials are encrypted using the operating system. If macOS prompts for access to an existing keychain item, verify it is for ReviewForge before granting it.
 
@@ -74,7 +74,7 @@ Back up the local data directory with the app closed. Credentials use the operat
 
 | Symptom | Next step |
 | --- | --- |
-| Copilot is not signed in | Check the configured Copilot credential or GitHub CLI identity, then Check Copilot / load models. |
+| Copilot is not signed in | Use Settings → Sign in with browser, approve the displayed code, then Check Copilot / load models. |
 | Enterprise IP allow-list or SSO error | Use your organization's approved access method; retry after access is restored. |
 | Files remain unreviewed | Inspect the reason; resume unfinished analysis or recapture an old snapshot. |
 | Workspace HEAD changed | Synchronize, inspect the new diff and approve the new code state. |

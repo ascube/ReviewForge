@@ -38,7 +38,7 @@ Get the installers from **[GitHub Releases](https://github.com/ascube/ReviewForg
 1. **Install and launch:** download the matching installer from [Releases](https://github.com/ascube/ReviewForge/releases/latest), install it, then open ReviewForge Desktop.
 2. **Choose a language:** open **Settings → Language**. English is the first-launch default; Simplified Chinese is optional and your choice is saved.
 3. **Connect GitHub for PR workflows:** enter your authorized **GitHub token**, or use an environment/active GitHub CLI credential. Click **Check GitHub** and confirm both the account and credential source. Local-only review does not require a GitHub publishing credential.
-4. **Connect Copilot:** enter an authorized Copilot-compatible token under **Copilot token**, or leave it empty to use an existing GitHub CLI login. A saved Copilot token takes priority. Click **Check Copilot / load models**.
+4. **Connect Copilot:** choose **Sign in with browser**, copy the displayed code and approve it on GitHub. ReviewForge loads models automatically and reuses the login. Existing approved tokens or GitHub CLI credentials also remain supported.
 5. **Choose a model:** select a model returned by the connection check, or leave the default. Account entitlement and organization access rules still apply.
 6. **Set local preferences:** choose a data directory if desired. If you plan to commit from ReviewForge, enter your own **Commit author** name and email; these are your Git commit details, not the tool author's contact details.
 7. **Save settings**, then start with **Local Review → Choose repository → Latest commit → Capture snapshot → Analyze** on a repository you are authorized to use.
@@ -100,7 +100,7 @@ ReviewForge was created by **Kevin Sun** — an IT guy working for IHG. The bili
 
 English is the default, independent of the operating system language. Select **Settings → Language → 简体中文** to switch; the choice is saved immediately. Menus, controls, dialogs and errors support both languages. User-authored content, file paths and previously generated text stay unchanged.
 
-Configure separate GitHub and Copilot credentials in Settings. Credentials are encrypted by the operating system. A saved Copilot credential takes priority; otherwise the app can use an existing GitHub CLI login. The bundled runtime runs with its own data directory; a login stored only in another application is not imported. Use **Check Copilot / load models** before the first review. A valid Copilot entitlement and any organization-required SSO/VPN access are still needed.
+Configure separate GitHub and Copilot credentials in Settings. Credentials are encrypted by the operating system. Use **Settings → GitHub Copilot → Sign in with browser** for guided device authorization. Existing login is reused; when no login is available, Copilot prompts automatically and continues after authorization. Browser sign-in becomes the preferred source; explicitly saving a new token switches back to that token. GitHub repository credentials and the GitHub CLI account are unchanged. The bundled runtime runs with its own data directory; a login stored only in another application is not imported. Use **Check Copilot / load models** before the first review. A valid Copilot entitlement and any organization-required SSO/VPN access are still needed.
 
 GitHub publishing credentials are only used by the application’s GitHub/Git services. They are not given to model tools. Review/fix/reply requests send the selected code and context to GitHub Copilot when you start the operation.
 
