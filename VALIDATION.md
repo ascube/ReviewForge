@@ -8,6 +8,8 @@
 - First-time user approval and subsequent OAuth credential persistence were not completed interactively in this validation; completion and cleanup paths are covered with a controlled runtime fixture. A user must approve their own account in the browser.
 
 
+- [Native build run 42929001548](https://github.com/ascube/ReviewForge/actions/runs/42929001548) built `v2.1.2` (`5e6fa477a30c0bbc966b4465410333b79ea76d38`) on macOS ARM64, macOS Intel x64 and Windows x64. Each platform passed all 54 tests, installer packaging and packaged Git/SQLite/native Copilot smoke checks. Interactive UI validation was performed on macOS ARM64.
+
 ## 2.1.1 feature parity
 
 - Compared the original Swift implementation against Desktop 2.0.3 and implemented the identified gaps; see [feature parity](docs/FEATURE_PARITY.md).
