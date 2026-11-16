@@ -1,6 +1,12 @@
 # Changelog
 
-## 2.1.3
+## 2.1.4
+
+- Include the requested-review inbox described below.
+- Build macOS DMGs directly from a staging folder, retaining the Applications shortcut and framework symlinks. This removes the mounted-volume customization step that failed twice on Intel macOS CI. DMGs are verified after creation.
+- 2.1.3 was a local validation build and was not published as a GitHub Release.
+
+## 2.1.3 (unpublished validation build)
 
 - Add **Awaiting my review** to Review, automatically loading open PRs requested for the current GitHub repository account, including team requests by default.
 - Add direct-request filtering, refresh, pagination, account/repository/author/update details and explicit partial-result notices.

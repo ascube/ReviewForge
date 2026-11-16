@@ -35,9 +35,8 @@ module.exports = {
   },
   makers: [
     {
-      name: "@electron-forge/maker-dmg",
+      name: require("node:path").resolve("scripts/maker-dmg.mjs"),
       platforms: ["darwin"],
-      config: { format: "ULFO" },
     },
     {
       name: "@electron-forge/maker-squirrel",

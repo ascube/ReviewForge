@@ -1,7 +1,8 @@
 # Validation — 2026-11-16
 
-## 2.1.3 requested reviews inbox
+## 2.1.4 requested reviews inbox
 
+- The 2.1.3 Intel macOS build failed twice in the DMG maker at `hdiutil detach`. Version 2.1.4 replaces mounted-volume customization with direct staging-folder DMG creation and verification. Application behavior is unchanged from the inbox validation build.
 - Typecheck, 60 automated tests and production build passed. New cases cover account-scoped open PR search, direct/team qualifiers, pagination, incomplete/truncated results, deleted authors, draft PRs, authentication failure and malformed/foreign-host results.
 - A live read-only query using the existing GitHub CLI credential returned four requested PRs with no incomplete-search flag. Private PR contents and credentials are not included in these docs or screenshots.
 - A native renderer fixture exercised English/Chinese layouts, 1000×700 width, automatic loading, pagination, direct-request filtering, opening/collapsing, busy guards and distinct empty/error states. The full native app then loaded four requests in both languages at 1000×700; main content and the footer remained within the viewport. No GitHub write or Copilot generation occurred.
