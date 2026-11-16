@@ -128,7 +128,7 @@ export function RequestedReviews({
                       </div>
                       <small>
                         {item.author
-                          ? `@${item.author}`
+                          ? `${item.authorName ?? t(item.authorName === null ? "Name not set" : "Name unavailable")} (@${item.author})`
                           : t("Account not reported")}{" "}
                         · {t("Updated")}{" "}
                         {new Date(item.updatedAt).toLocaleString(language)}

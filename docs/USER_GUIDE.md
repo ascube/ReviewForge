@@ -30,6 +30,8 @@ Open **Review → Awaiting my review** to load open PRs requested for the curren
 
 **Open review** reuses an active local draft if one exists, or imports a new review. It does not start Copilot or publish a review. The list collapses when a review is opened and can be expanded again. Loading errors are distinct from an empty inbox. GitHub search may be delayed or incomplete; partial results and the 1,000-result search limit are shown explicitly. Only repositories accessible to the credential can appear.
 
+Authors in the request list appear as **Name (@GitHub ID)** when a public name is available. Missing and unavailable names are labelled explicitly. In both remote and local reviews, focus a file row and press **↑ / ↓** to move through the visible files and update the code preview. Search and the unreviewed filter define the navigation order; arrows in editors still move the cursor.
+
 ## Remote PR review
 
 1. Open **Review**, paste a github.com PR URL and click **Import PR**.

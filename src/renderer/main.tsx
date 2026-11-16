@@ -15,6 +15,7 @@ import type {
 import { translate } from "./i18n";
 import { about } from "../shared/about";
 import "./style.css";
+import { navigateFileRows } from "./fileNavigation";
 import { RequestedReviews } from "./RequestedReviews";
 const api = window.forge;
 let lang: Language = "en";
@@ -784,6 +785,9 @@ function App() {
                         </span>
                       </div>
                     </div>
+                    <small className="fileNavigationHint">
+                      {t("Focus a file, then use ↑ / ↓ to navigate.")}
+                    </small>
                     <div
                       className="files"
                       style={{
@@ -813,6 +817,8 @@ function App() {
                               (reviewed(f) ? "reviewed" : "")
                             }
                             key={f.path}
+                            aria-pressed={file === f.path}
+                            onKeyDown={navigateFileRows}
                             onClick={() => setFile(f.path)}
                           >
                             <span className="statusIcon">

@@ -98,6 +98,9 @@ ReviewForge was created by **Kevin Sun** — an IT guy working for IHG. The bili
 
 Open **Review → Awaiting my review** for PRs waiting for your review. The list loads automatically using your GitHub repository account, includes team requests by default, and supports direct-request filtering, refresh and pagination. **Open review** imports the PR or reopens its active local draft.
 
+Authors in the request list appear as **Name (@GitHub ID)** when a public name is available. Missing and unavailable names are labelled explicitly. In both remote and local reviews, focus a file row and press **↑ / ↓** to move through the visible files and update the code preview. Search and the unreviewed filter define the navigation order; arrows in editors still move the cursor.
+
+
 ## First launch
 
 English is the default, independent of the operating system language. Select **Settings → Language → 简体中文** to switch; the choice is saved immediately. Menus, controls, dialogs and errors support both languages. User-authored content, file paths and previously generated text stay unchanged.

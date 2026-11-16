@@ -216,6 +216,7 @@ export interface RequestedReviewPage {
     number: number;
     title: string;
     author: string;
+    authorName?: string | null;
     updatedAt: string;
     draft: boolean;
   }[];

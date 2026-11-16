@@ -1,6 +1,13 @@
 # Changelog
 
-## 2.1.4
+## 2.1.5
+
+- Include the requested-review inbox and macOS packaging fixes from the validation builds below.
+- Display requested PR authors as **Name (@login)**. Fetch public names in a single deduplicated query per page; preserve PR access when names are unavailable and distinguish unset names from lookup failures.
+- Navigate files with **↑ / ↓** in both remote PR and local reviews. Focus, selection and code preview move together in the current filtered order; navigation stops at the first/last file. Search and text editors retain their normal arrow keys.
+- Add English and Simplified Chinese help and author-name fallback labels.
+
+## 2.1.4 (unpublished validation build)
 
 - Include the requested-review inbox described below.
 - Build macOS DMGs directly from a staging folder, retaining the Applications shortcut and framework symlinks. This removes the mounted-volume customization step that failed twice on Intel macOS CI. DMGs are verified after creation.

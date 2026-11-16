@@ -116,3 +116,67 @@ test("malformed or foreign-host search rows do not become import links", async (
   );
   await assert.rejects(api({ items: [] }, []).requestedReviews());
 });
+
+test("author profiles are fetched once per page, deduplicated and paired with login", async () => {
+  let profileCalls = 0;
+  const github = new GitHub("fixture", async (input, options) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/user") return Response.json({ id: 7, login: "reviewer" });
+    if (path === "/graphql") {
+      profileCalls++;
+      assert.equal(options?.method, "POST");
+      assert.deepEqual(JSON.parse(String(options?.body)).variables.ids, [
+        "U_author",
+        "U_other",
+      ]);
+      return Response.json({
+        data: {
+          nodes: [
+            { id: "U_author", login: "author", name: "  Example Author  " },
+            { id: "U_other", login: "other", name: null },
+          ],
+        },
+      });
+    }
+    return Response.json({
+      total_count: 3,
+      incomplete_results: false,
+      items: [
+        { ...item(1), user: { login: "author", node_id: "U_author" } },
+        { ...item(2), user: { login: "author", node_id: "U_author" } },
+        { ...item(3), user: { login: "other", node_id: "U_other" } },
+      ],
+    });
+  });
+  const result = await github.requestedReviews();
+  assert.equal(profileCalls, 1);
+  assert.deepEqual(
+    result.items.map((i) => [i.author, i.authorName]),
+    [
+      ["author", "Example Author"],
+      ["author", "Example Author"],
+      ["other", null],
+    ],
+  );
+});
+test("unavailable author profiles preserve review requests and do not claim a missing name", async () => {
+  for (const profile of [
+    Response.json({ message: "Forbidden" }, { status: 403 }),
+    Response.json({ data: { nodes: [null, {}] } }),
+  ]) {
+    const github = new GitHub("fixture", async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/user") return Response.json({ id: 7, login: "reviewer" });
+      if (path === "/graphql") return profile;
+      return Response.json({
+        total_count: 1,
+        incomplete_results: false,
+        items: [{ ...item(1), user: { login: "author", node_id: "U_author" } }],
+      });
+    });
+    const result = await github.requestedReviews();
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0].author, "author");
+    assert.equal(result.items[0].authorName, undefined);
+  }
+});

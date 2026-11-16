@@ -156,7 +156,9 @@ export class GitHub {
           z.object({
             html_url: z.string(),
             title: z.string(),
-            user: z.object({ login: z.string() }).nullable(),
+            user: z
+              .object({ login: z.string(), node_id: z.string().optional() })
+              .nullable(),
             updated_at: z.string().datetime(),
             draft: z.boolean().optional(),
             pull_request: z.object({ url: z.string() }),
@@ -174,6 +176,34 @@ export class GitHub {
         "GitHub 返回的审查请求列表格式异常，请刷新重试。",
       );
     const result = parsed.data;
+    const names = new Map<string, string | null>();
+    const ids = [
+      ...new Set(
+        result.items.flatMap((item) =>
+          item.user?.node_id ? [item.user.node_id] : [],
+        ),
+      ),
+    ];
+    if (ids.length) {
+      try {
+        const profiles = await this.request("/graphql", "POST", {
+          query: `query($ids: [ID!]!) { nodes(ids: $ids) { ... on User { id login name } } }`,
+          variables: { ids },
+        });
+        for (const node of profiles?.data?.nodes ?? []) {
+          if (
+            node &&
+            typeof node.id === "string" &&
+            typeof node.login === "string" &&
+            (node.name === null || typeof node.name === "string")
+          ) {
+            names.set(`${node.id}:${node.login}`, node.name?.trim() || null);
+          }
+        }
+      } catch {
+        // Optional profile details must not hide accessible review requests.
+      }
+    }
     return {
       login,
       total: result.total_count,
@@ -191,6 +221,9 @@ export class GitHub {
           number: pr.number,
           title: item.title,
           author: item.user?.login ?? "",
+          authorName: item.user
+            ? names.get(`${item.user.node_id}:${item.user.login}`)
+            : undefined,
           updatedAt: item.updated_at,
           draft: item.draft ?? false,
         };

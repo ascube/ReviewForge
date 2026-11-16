@@ -1234,3 +1234,12 @@ footer button {
 .reviewInbox ~ .empty h1 {
   font-size: 18px;
 }
+
+.fileNavigationHint {
+  padding: 4px 12px;
+  color: #8fa1b6;
+}
+.fileRow:focus-visible {
+  outline: 2px solid #62ddba;
+  outline-offset: -2px;
+}

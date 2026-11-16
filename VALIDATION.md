@@ -1,5 +1,13 @@
 # Validation — 2026-11-16
 
+## 2.1.5 author names and file navigation
+
+- Typecheck, 62 automated tests and production build passed. New profile tests verify deduplication, name/login association, unset names and graceful handling of unavailable profiles.
+- A live read-only GitHub query returned four requested PRs with public author names. Only aggregate counts were logged; no private identities or PR details are included here.
+- The actual application renderer with synthetic drafts was exercised in a native Electron window in both languages: Up/Down updates selection, keyboard focus and code preview in remote and local reviews; first/last boundaries, scrolling, search and unreviewed filtering passed. Arrow keys in the search input do not navigate files.
+- The requested-review component passed English/Chinese checks for name/login rendering, pagination, direct-request filtering, opening/collapsing, busy state and distinct empty/error states. No GitHub writes or Copilot requests were made.
+- The preceding [2.1.4 native build](https://github.com/ascube/ReviewForge/actions/runs/43979593426) passed on macOS ARM64, Intel macOS and Windows, including the replacement DMG maker and packaged runtime smoke checks.
+
 ## 2.1.4 requested reviews inbox
 
 - The 2.1.3 Intel macOS build failed twice in the DMG maker at `hdiutil detach`. Version 2.1.4 replaces mounted-volume customization with direct staging-folder DMG creation and verification. Application behavior is unchanged from the inbox validation build.

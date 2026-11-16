@@ -353,6 +353,10 @@ const zh: Record<string, string> = {
   "Awaiting approval": "等待批准",
   "Save reply": "保存回复",
   "ReviewForge Desktop": "ReviewForge Desktop",
+  "Name not set": "未设置姓名",
+  "Name unavailable": "姓名暂不可用",
+  "Focus a file, then use ↑ / ↓ to navigate.":
+    "选中文件后，使用 ↑ / ↓ 逐个切换。",
   "Data copied; original folder retained": "数据已复制，原目录已保留",
 };
 export const translate = (language: Language, key: string) =>
