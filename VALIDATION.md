@@ -4,9 +4,11 @@
 
 - Typecheck, 62 automated tests and production build passed. New profile tests verify deduplication, name/login association, unset names and graceful handling of unavailable profiles.
 - A live read-only GitHub query returned four requested PRs with public author names. Only aggregate counts were logged; no private identities or PR details are included here.
-- The actual application renderer with synthetic drafts was exercised in a native Electron window in both languages: Up/Down updates selection, keyboard focus and code preview in remote and local reviews; first/last boundaries, scrolling, search and unreviewed filtering passed. Arrow keys in the search input do not navigate files.
+- The actual application renderer with synthetic drafts was exercised in a native Electron window in both languages: Up/Down updates selection, keyboard focus and code preview in remote and local reviews; first/last boundaries, scrolling, search and unreviewed filtering passed. Arrow keys in the search input and summary editor do not navigate files.
 - The requested-review component passed English/Chinese checks for name/login rendering, pagination, direct-request filtering, opening/collapsing, busy state and distinct empty/error states. No GitHub writes or Copilot requests were made.
 - The preceding [2.1.4 native build](https://github.com/ascube/ReviewForge/actions/runs/43979593426) passed on macOS ARM64, Intel macOS and Windows, including the replacement DMG maker and packaged runtime smoke checks.
+
+- The local 2.1.5 ARM64 DMG was mounted read-only and its packaged app passed bundled Git 2.56.0, SQLite and native Copilot runtime smoke checks. Its version, Applications shortcut and all production bundles were verified against the tested build.
 
 ## 2.1.4 requested reviews inbox
 
