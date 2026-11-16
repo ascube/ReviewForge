@@ -10,6 +10,8 @@
 
 - The local 2.1.5 ARM64 DMG was mounted read-only and its packaged app passed bundled Git 2.56.0, SQLite and native Copilot runtime smoke checks. Its version, Applications shortcut and all production bundles were verified against the tested build.
 
+- [2.1.5 native build run 43981141044](https://github.com/ascube/ReviewForge/actions/runs/43981141044) built tag `v2.1.5` (`42a9d5a964545a63b2f16c07925afca693709649`). macOS ARM64, Intel macOS and Windows each passed typecheck, all 62 tests, installer packaging and the packaged Git/SQLite/native Copilot smoke test. Interactive UI validation was performed on macOS ARM64.
+
 ## 2.1.4 requested reviews inbox
 
 - The 2.1.3 Intel macOS build failed twice in the DMG maker at `hdiutil detach`. Version 2.1.4 replaces mounted-volume customization with direct staging-folder DMG creation and verification. Application behavior is unchanged from the inbox validation build.
