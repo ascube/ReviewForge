@@ -1,5 +1,25 @@
 import type { Language } from "../shared/types";
 const zh: Record<string, string> = {
+  Page: "页",
+  "Next page": "下一页",
+  "Previous page": "上一页",
+  "Open review": "打开审查",
+  Updated: "更新于",
+  "Draft PR": "草稿 PR",
+  "No pending review requests found for this account and filter.":
+    "当前账号和筛选条件下未找到待审查请求。",
+  "GitHub returned partial search results. Refresh to try again.":
+    "GitHub 仅返回了部分搜索结果，请刷新重试。",
+  "GitHub search returns at most 1,000 results. This list is not complete.":
+    "GitHub 搜索最多返回 1,000 条结果，此列表并不完整。",
+  "Loading review requests\u2026": "正在加载审查请求…",
+  "Open PRs requested for the current GitHub account. Results depend on repository access.":
+    "当前 GitHub 账号收到审查请求的开放 PR，结果取决于仓库访问权限。",
+  "Direct requests only": "仅直接请求我",
+  "Me and my teams": "我和我的团队",
+  "Review requests": "审查请求",
+  "Refresh requests": "刷新请求",
+  "Awaiting my review": "待我审查",
   "Sign in to Copilot": "登录 Copilot",
   "Enter this one-time code on GitHub and authorize Copilot. ReviewForge will continue automatically.":
     "请在 GitHub 输入此一次性验证码并授权 Copilot。完成后 ReviewForge 将自动继续。",

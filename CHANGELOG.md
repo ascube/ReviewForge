@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.3
+
+- Add **Awaiting my review** to Review, automatically loading open PRs requested for the current GitHub repository account, including team requests by default.
+- Add direct-request filtering, refresh, pagination, account/repository/author/update details and explicit partial-result notices.
+- Open an existing active local review or import a requested PR with one click; browsing requests never starts Copilot or publishes anything.
+
+
 ## 2.1.2
 
 - Add in-app Copilot browser/device authorization, with automatic prompting when no login is available and automatic continuation after authorization.

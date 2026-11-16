@@ -172,6 +172,7 @@ async function dispatch(method: string, args: any) {
     ![
       "cancel",
       "repository",
+      "requestedReviews",
       "openExternal",
       "openWorkspace",
       "openData",
@@ -288,6 +289,15 @@ async function dispatch(method: string, args: any) {
     return;
   }
   if (method === "openDemo") return service.openDemo();
+  if (method === "requestedReviews") {
+    const value = z
+      .object({
+        page: z.number().int().min(1).max(20),
+        directOnly: z.boolean(),
+      })
+      .parse(args);
+    return service.requestedReviews(value.page, value.directOnly);
+  }
   if (method === "connection") return service.connection();
   if (method === "copilotLogin") return service.connection(true);
   if (method === "githubConnection") {

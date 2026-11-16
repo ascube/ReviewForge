@@ -15,6 +15,7 @@ import type {
 import { translate } from "./i18n";
 import { about } from "../shared/about";
 import "./style.css";
+import { RequestedReviews } from "./RequestedReviews";
 const api = window.forge;
 let lang: Language = "en";
 const t = (s: string) => translate(lang, s);
@@ -543,6 +544,26 @@ function App() {
               )}
             </fieldset>
           </section>
+          {mode === "review" && (
+            <RequestedReviews
+              language={state.settings.language}
+              busy={busy}
+              settingsOpen={modal?.type === "settings"}
+              openSettings={() => setModal({ type: "settings" })}
+              openReview={async (prURL) => {
+                setURL(prURL);
+                const existing = state.drafts.find(
+                  (item) => !item.archived && item.snapshot.pr?.url === prURL,
+                );
+                const draft =
+                  existing ?? (await run("importPR", { url: prURL }));
+                if (!draft) return false;
+                setArchived(false);
+                selectDraft(draft);
+                return true;
+              }}
+            />
+          )}
           {error && (
             <div className="alert error">
               <span>{error}</span>

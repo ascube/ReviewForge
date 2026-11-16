@@ -1161,3 +1161,76 @@ footer button {
 .authModal p {
   margin: 0.75rem 0;
 }
+
+.reviewInbox {
+  padding: 12px 18px;
+  border-bottom: 1px solid #303b49;
+  flex-shrink: 0;
+}
+.inboxHeading,
+.inboxControls,
+.inboxPages {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.inboxTitle {
+  font-weight: 650;
+  margin-right: auto;
+}
+.inboxControls {
+  margin: 10px 0;
+}
+.inboxControls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inboxControls small {
+  color: #8d9caf;
+  flex: 1 1 240px;
+}
+.inboxList {
+  max-height: 240px;
+  overflow: auto;
+}
+.inboxItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #303b49;
+}
+.inboxItemText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.inboxItemText b {
+  color: #62ddba;
+}
+.inboxItemText small {
+  color: #8d9caf;
+}
+.inboxItem .rowTools {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.inboxPages {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.reviewInbox ~ .empty {
+  min-height: 0;
+  overflow: auto;
+  justify-content: flex-start;
+  padding: 16px;
+}
+.reviewInbox ~ .empty .emptyIcon {
+  display: none;
+}
+.reviewInbox ~ .empty h1 {
+  font-size: 18px;
+}

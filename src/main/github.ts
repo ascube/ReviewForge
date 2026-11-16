@@ -1,4 +1,11 @@
-import type { PR, Snapshot, Feedback, FileSnapshot } from "../shared/types";
+import { z } from "zod";
+import type {
+  PR,
+  Snapshot,
+  Feedback,
+  FileSnapshot,
+  RequestedReviewPage,
+} from "../shared/types";
 import { fileSnapshot } from "./git";
 import { fail, ForgeError, now, redact, relativePath } from "./util";
 export type Fetcher = typeof fetch;
@@ -131,6 +138,64 @@ export class GitHub {
     if (!Number.isSafeInteger(user?.id) || !user?.login)
       fail("GitHub identity could not be verified.", "无法验证 GitHub 身份。");
     return user;
+  }
+  async requestedReviews(
+    page = 1,
+    directOnly = false,
+  ): Promise<RequestedReviewPage> {
+    z.number().int().min(1).max(20).parse(page);
+    const { login } = await this.currentUser();
+    // Use the repository credential's identity, never the independent Copilot account.
+    const qualifier = directOnly ? "user-review-requested" : "review-requested";
+    const q = `is:pr is:open ${qualifier}:${login}`;
+    const parsed = z
+      .object({
+        total_count: z.number().int().nonnegative(),
+        incomplete_results: z.boolean(),
+        items: z.array(
+          z.object({
+            html_url: z.string(),
+            title: z.string(),
+            user: z.object({ login: z.string() }).nullable(),
+            updated_at: z.string().datetime(),
+            draft: z.boolean().optional(),
+            pull_request: z.object({ url: z.string() }),
+          }),
+        ),
+      })
+      .safeParse(
+        await this.request(
+          `/search/issues?q=${encodeURIComponent(q)}&sort=updated&order=desc&per_page=50&page=${page}`,
+        ),
+      );
+    if (!parsed.success)
+      fail(
+        "GitHub returned an unexpected review-request list. Refresh to try again.",
+        "GitHub 返回的审查请求列表格式异常，请刷新重试。",
+      );
+    const result = parsed.data;
+    return {
+      login,
+      total: result.total_count,
+      page,
+      hasNext:
+        result.items.length === 50 &&
+        page * 50 < Math.min(result.total_count, 1000),
+      incomplete: result.incomplete_results,
+      truncated: result.total_count > 1000,
+      items: result.items.map((item) => {
+        const pr = parsePR(item.html_url);
+        return {
+          url: `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.number}`,
+          repository: `${pr.owner}/${pr.repo}`,
+          number: pr.number,
+          title: item.title,
+          author: item.user?.login ?? "",
+          updatedAt: item.updated_at,
+          draft: item.draft ?? false,
+        };
+      }),
+    };
   }
   async containsCommit(repository: string, commit: string, head: string) {
     if (commit === head) return true;

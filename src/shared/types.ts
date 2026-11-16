@@ -203,6 +203,23 @@ export interface AppState {
     browserOpened: boolean;
   };
 }
+export interface RequestedReviewPage {
+  login: string;
+  total: number;
+  page: number;
+  hasNext: boolean;
+  incomplete: boolean;
+  truncated: boolean;
+  items: {
+    url: string;
+    repository: string;
+    number: number;
+    title: string;
+    author: string;
+    updatedAt: string;
+    draft: boolean;
+  }[];
+}
 export interface RepoInfo {
   directory: string;
   branch: string;

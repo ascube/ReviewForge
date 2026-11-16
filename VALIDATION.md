@@ -1,4 +1,11 @@
-# Validation — 2026-11-10
+# Validation — 2026-11-16
+
+## 2.1.3 requested reviews inbox
+
+- Typecheck, 60 automated tests and production build passed. New cases cover account-scoped open PR search, direct/team qualifiers, pagination, incomplete/truncated results, deleted authors, draft PRs, authentication failure and malformed/foreign-host results.
+- A live read-only query using the existing GitHub CLI credential returned four requested PRs with no incomplete-search flag. Private PR contents and credentials are not included in these docs or screenshots.
+- A native renderer fixture exercised English/Chinese layouts, 1000×700 width, automatic loading, pagination, direct-request filtering, opening/collapsing, busy guards and distinct empty/error states. The full native app then loaded four requests in both languages at 1000×700; main content and the footer remained within the viewport. No GitHub write or Copilot generation occurred.
+
 
 ## 2.1.2 Copilot browser authorization
 

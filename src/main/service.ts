@@ -179,6 +179,9 @@ export class Service {
       return this.models;
     });
   }
+  async requestedReviews(page: number, directOnly: boolean) {
+    return (await this.api()).requestedReviews(page, directOnly);
+  }
   async githubConnection() {
     return (await this.api()).currentUser().then((u) => u.login);
   }

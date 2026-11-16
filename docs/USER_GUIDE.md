@@ -24,6 +24,12 @@ Use **Settings → GitHub Copilot → Sign in with browser**, copy the one-time 
 
 Only configure credentials through the app or the provider's official login flow. Do not paste tokens into GitHub issues. Credentials are encrypted using the operating system. If macOS prompts for access to an existing keychain item, verify it is for ReviewForge before granting it.
 
+## Review requests inbox
+
+Open **Review → Awaiting my review** to load open PRs requested for the current GitHub repository credential's account. **Me and my teams** includes team requests; choose **Direct requests only** for personal requests. The account is shown next to the heading. Use **Refresh requests** after completing a review or changing permissions; each page contains up to 50 PRs sorted by most recently updated.
+
+**Open review** reuses an active local draft if one exists, or imports a new review. It does not start Copilot or publish a review. The list collapses when a review is opened and can be expanded again. Loading errors are distinct from an empty inbox. GitHub search may be delayed or incomplete; partial results and the 1,000-result search limit are shown explicitly. Only repositories accessible to the credential can appear.
+
 ## Remote PR review
 
 1. Open **Review**, paste a github.com PR URL and click **Import PR**.

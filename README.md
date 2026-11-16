@@ -96,6 +96,8 @@ No company repository, credential, private package registry or internal service 
 
 ReviewForge was created by **Kevin Sun** — an IT guy working for IHG. The bilingual About page explains the decision to open-source this long-used personal tool in response to code reviews driven by personal preferences rather than shared standards. Open it from the application menu or the bottom About button.
 
+Open **Review → Awaiting my review** for PRs waiting for your review. The list loads automatically using your GitHub repository account, includes team requests by default, and supports direct-request filtering, refresh and pagination. **Open review** imports the PR or reopens its active local draft.
+
 ## First launch
 
 English is the default, independent of the operating system language. Select **Settings → Language → 简体中文** to switch; the choice is saved immediately. Menus, controls, dialogs and errors support both languages. User-authored content, file paths and previously generated text stay unchanged.
